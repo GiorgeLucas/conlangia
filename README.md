@@ -1,7 +1,7 @@
-# Tauri + React + Typescript
+# Conlangia
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+An open source desktop application to assist in the process of building conlangs (constructed languages), made for the conlanging community.
 
-## Recommended IDE Setup
+## 📖 What it is
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+Conlangia is a support tool for people who create constructed languages — from hobbyists to worldbuilders and amateur linguists. The goal is to bring together, in one place, the resources a conlanger uses on a daily basis to organize and develop their language.
