@@ -55,6 +55,13 @@ pub fn run() {
             commands::category::update_category_name,
             commands::category::update_category_description,
             commands::category::delete_category,
+
+            commands::morph_type::create_morph_type,
+            commands::morph_type::list_morph_types,
+            commands::morph_type::update_morph_type_code,
+            commands::morph_type::update_morph_type_label,
+            commands::morph_type::update_morph_type_bound,
+            commands::morph_type::delete_morph_type,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

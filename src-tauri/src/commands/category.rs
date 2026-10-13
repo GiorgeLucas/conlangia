@@ -23,7 +23,7 @@ impl Serialize for CategoryCommandError {
             Self::State(_) => "state",
         };
 
-        let mut s = serializer.serialize_struct("EntryCommandError", 2)?;
+        let mut s = serializer.serialize_struct("CategoryCommandError", 2)?;
         s.serialize_field("kind", kind)?;
         s.serialize_field("message", &self.to_string())?;
         s.end()

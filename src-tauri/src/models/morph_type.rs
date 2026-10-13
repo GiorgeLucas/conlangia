@@ -22,12 +22,12 @@ impl MorphTypeId {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MorphTypeCode(String);
 impl MorphTypeCode {
-    pub fn new(value: String) -> Result<Self, MorphTypeError> {
-        let value = value.trim().to_string();
+    pub fn new(value: impl AsRef<str>) -> Result<Self, MorphTypeError> {
+        let value = value.as_ref().trim();
         if value.is_empty() {
             return Err(MorphTypeError::CodeIsEmpty);
         }
-        Ok(Self(value))
+        Ok(Self(value.to_owned()))
     }
     pub fn as_str(&self) -> &str {
         &self.0
@@ -37,12 +37,12 @@ impl MorphTypeCode {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MorphTypeLabel(String);
 impl MorphTypeLabel {
-    pub fn new(value: String) -> Result<Self, MorphTypeError> {
-        let value = value.trim().to_string();
+    pub fn new(value: impl AsRef<str>) -> Result<Self, MorphTypeError> {
+        let value = value.as_ref().trim();
         if value.is_empty() {
             return Err(MorphTypeError::LabelIsEmpty);
         }
-        Ok(Self(value))
+        Ok(Self(value.to_owned()))
     }
     pub fn as_str(&self) -> &str {
         &self.0
@@ -96,7 +96,7 @@ impl MorphType {
     pub fn set_label(&mut self, label: MorphTypeLabel) {
         self.label = label;
     }
-    pub fn set_is_bound(&mut self, is_bound: bool) {
+    pub fn set_bound(&mut self, is_bound: bool) {
         self.is_bound = is_bound;
     }
 }
