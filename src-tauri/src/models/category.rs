@@ -20,12 +20,12 @@ impl CategoryId {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CategoryName(String);
 impl CategoryName {
-    pub fn new(value: String) -> Result<Self, CategoryError> {
-        let value = value.trim().to_string();
+    pub fn new(value: impl AsRef<str>) -> Result<Self, CategoryError> {
+        let value = value.as_ref().trim();
         if value.is_empty() {
             return Err(CategoryError::NameIsEmpty);
         }
-        Ok(Self(value))
+        Ok(Self(value.to_owned()))
     }
     pub fn as_str(&self) -> &str {
         &self.0
@@ -35,8 +35,8 @@ impl CategoryName {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CategoryDescription(Option<String>);
 impl CategoryDescription {
-    pub fn new(value: Option<String>) -> Self {
-        let value = value.map(|v| v.trim().to_string());
+    pub fn new(value: Option<impl AsRef<str>>) -> Self {
+        let value = value.map(|v| v.as_ref().trim().to_owned());
         let value = match value {
             Some(v) if v.is_empty() => None,
             Some(v) => Some(v),

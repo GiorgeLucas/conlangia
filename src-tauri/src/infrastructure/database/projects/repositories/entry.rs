@@ -367,10 +367,25 @@ impl<'a> EntryRepository<'a> {
 
         self.find_by_id(entry_id)?.ok_or(DatabaseError::NotFound)
     }
+
+    pub fn delete(&mut self, id: EntryId) -> Result<(), DatabaseError> {
+        let changed = self
+            .connection
+            .execute("DELETE FROM entries WHERE id = ?1", params![id.get()])
+            .map_err(DatabaseError::FailedToDeleteData)?;
+
+        if changed == 0 {
+            return Err(DatabaseError::NotFound);
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use rusqlite::params;
+
     use crate::infrastructure;
 
     use super::*;
@@ -382,52 +397,221 @@ mod tests {
         conn
     }
 
-    fn pron(value: &str) -> PronunciationValue {
-        PronunciationValue::new(value.to_string()).unwrap()
+    fn pron_value(value: &str) -> PronunciationValue {
+        PronunciationValue::new(value).unwrap()
     }
 
-    #[test]
-    fn save_new_entry_assigns_id_and_roundtrips() {
-        let mut conn = setup();
-        let mut repo = EntryRepository::new(&mut conn);
+    fn pron_description(description: Option<&str>) -> PronunciationDescription {
+        PronunciationDescription::new(description)
+    }
 
-        let saved = repo
-            .save(&Entry::new(EntryForm::new("casa").unwrap()))
+    fn sense_translation(translation: &str) -> SenseTranslation {
+        SenseTranslation::new(translation).unwrap()
+    }
+
+    fn sense_definition(definition: Option<&str>) -> SenseDefinition {
+        SenseDefinition::new(definition)
+    }
+
+    fn insert_entry(connection: &mut Connection, form: &str, morph_type_id: Option<i64>) -> i64 {
+        connection
+            .execute(
+                "INSERT INTO entries (entry_form, morph_type_id) VALUES (?1, ?2)",
+                params![form, morph_type_id],
+            )
             .unwrap();
 
-        assert!(saved.id().is_some());
-        assert_eq!(saved.form().as_str(), "casa");
-        assert!(saved.pronunciations().is_empty());
-        assert!(saved.senses().is_empty());
-        assert_eq!(saved.morph_type_id(), None);
+        connection.last_insert_rowid()
+    }
 
-        let loaded = repo.find_by_id(saved.id().unwrap()).unwrap().unwrap();
-        assert_eq!(loaded, saved);
+    fn insert_pronunciation(
+        connection: &mut Connection,
+        entry_id: i64,
+        value: &str,
+        description: Option<&str>,
+        sort_order: i64,
+    ) -> i64 {
+        connection
+            .execute(
+                "INSERT INTO pronunciations (entry_id, value, description, sort_order)
+                 VALUES (?1, ?2, ?3, ?4)",
+                params![entry_id, value, description, sort_order],
+            )
+            .unwrap();
+
+        connection.last_insert_rowid()
+    }
+
+    fn insert_sense(
+        connection: &mut Connection,
+        entry_id: i64,
+        translation: &str,
+        definition: Option<&str>,
+        sort_order: i64,
+        category_id: Option<i64>,
+    ) -> i64 {
+        connection
+            .execute(
+                "INSERT INTO senses (entry_id, translation, definition, sort_order, category_id)
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![entry_id, translation, definition, sort_order, category_id],
+            )
+            .unwrap();
+
+        connection.last_insert_rowid()
     }
 
     #[test]
-    fn save_inserts_then_removes_and_renumbers() {
+    fn find_by_id_with_valid_id_returns_entry_with_children() {
         let mut conn = setup();
+
+        let entry_id = insert_entry(&mut conn, "house", None);
+
+        insert_pronunciation(&mut conn, entry_id, "pron 1", Some("desc 1"), 1);
+        insert_pronunciation(&mut conn, entry_id, "pron 2", None, 2);
+
+        insert_sense(&mut conn, entry_id, "translation 1", Some("definition 1"), 1, None);
+        insert_sense(&mut conn, entry_id, "translation 2", Some("definition 2"), 2, None);
+
+        let repo = EntryRepository::new(&mut conn);
+
+        let entry = repo.find_by_id(EntryId::new(entry_id)).unwrap().unwrap();
+
+        assert_eq!(entry.form().as_str(), "house");
+        assert_eq!(entry.pronunciations().len(), 2);
+        assert_eq!(entry.senses().len(), 2);
+    }
+
+    #[test]
+    fn find_by_id_with_missing_id_returns_none() {
+        let mut conn = setup();
+
+        let repo = EntryRepository::new(&mut conn);
+
+        let result = repo.find_by_id(EntryId::new(999999));
+
+        assert!(result.unwrap().is_none());
+    }
+
+    #[test]
+    fn save_inserts_new_entry_with_pronunciations_and_senses() {
+        let mut conn = setup();
+
         let mut repo = EntryRepository::new(&mut conn);
 
-        let mut entry = Entry::new(EntryForm::new("casa").unwrap());
-        for v in ["a", "b", "c"] {
-            entry.add_pronunciation(pron(v), PronunciationDescription::default());
-        }
+        let mut entry = Entry::new(EntryForm::new("house").unwrap());
 
-        let mut saved = repo.save(&entry).unwrap();
+        entry.add_pronunciation(pron_value("pron 1"), pron_description(Some("desc 1")));
+        entry.add_sense(
+            sense_translation("translation 1"),
+            sense_definition(Some("definition 1")),
+            None,
+        );
+        entry.add_sense(
+            sense_translation("translation 2"),
+            sense_definition(None),
+            None,
+        );
+
+        let saved = repo.save(&entry).unwrap();
+
         assert!(saved.id().is_some());
-        assert_eq!(saved.pronunciations().len(), 3);
+        assert_eq!(saved.form().as_str(), "house");
+        assert_eq!(saved.pronunciations().len(), 1);
+        assert_eq!(saved.senses().len(), 2);
+    }
 
-        let middle = saved.pronunciations()[1].id().unwrap();
-        saved.remove_pronunciation(middle).unwrap();
-        let saved = repo.save(&saved).unwrap();
+    #[test]
+    fn save_updates_existing_entry_and_syncs_children() {
+        let mut conn = setup();
 
-        let orders: Vec<i64> = saved
-            .pronunciations()
-            .iter()
-            .map(|p| p.sort_order().get())
-            .collect();
-        assert_eq!(orders, vec![1, 2]);
+        let mut repo = EntryRepository::new(&mut conn);
+
+        let mut entry = Entry::new(EntryForm::new("house").unwrap());
+        entry.add_pronunciation(pron_value("pron 1"), pron_description(None));
+        entry.add_sense(
+            sense_translation("translation 1"),
+            sense_definition(None),
+            None,
+        );
+
+        let saved = repo.save(&entry).unwrap();
+
+        let mut persisted = repo.find_by_id(saved.id().unwrap()).unwrap().unwrap();
+
+        persisted.add_pronunciation(pron_value("pron 2"), pron_description(Some("desc 2")));
+        persisted.add_sense(
+            sense_translation("translation 2"),
+            sense_definition(Some("definition 2")),
+            None,
+        );
+
+        let updated = repo.save(&persisted).unwrap();
+
+        assert_eq!(updated.form().as_str(), "house");
+        assert_eq!(updated.pronunciations().len(), 2);
+        assert_eq!(updated.senses().len(), 2);
+    }
+
+    #[test]
+    fn save_removes_deleted_children() {
+        let mut conn = setup();
+
+        let mut repo = EntryRepository::new(&mut conn);
+
+        let mut entry = Entry::new(EntryForm::new("house").unwrap());
+        entry.add_pronunciation(pron_value("pron 1"), pron_description(None));
+        entry.add_pronunciation(pron_value("pron 2"), pron_description(None));
+
+        entry.add_sense(
+            sense_translation("translation 1"),
+            sense_definition(None),
+            None,
+        );
+        entry.add_sense(
+            sense_translation("translation 2"),
+            sense_definition(None),
+            None,
+        );
+
+        let saved = repo.save(&entry).unwrap();
+
+        let mut persisted = repo.find_by_id(saved.id().unwrap()).unwrap().unwrap();
+
+        let first_pron_id = persisted.pronunciations()[0].id().unwrap();
+        let first_sense_id = persisted.senses()[0].id().unwrap();
+
+        persisted.remove_pronunciation(first_pron_id).unwrap();
+        persisted.remove_sense(first_sense_id).unwrap();
+
+        let updated = repo.save(&persisted).unwrap();
+
+        assert_eq!(updated.pronunciations().len(), 1);
+        assert_eq!(updated.senses().len(), 1);
+    }
+
+    #[test]
+    fn delete_removes_existing_entry() {
+        let mut conn = setup();
+
+        let mut repo = EntryRepository::new(&mut conn);
+
+        let entry = Entry::new(EntryForm::new("house").unwrap());
+        let saved = repo.save(&entry).unwrap();
+
+        repo.delete(saved.id().unwrap()).unwrap();
+
+        assert!(repo.find_by_id(saved.id().unwrap()).unwrap().is_none());
+    }
+
+    #[test]
+    fn delete_missing_entry_returns_not_found() {
+        let mut conn = setup();
+
+        let mut repo = EntryRepository::new(&mut conn);
+
+        let err = repo.delete(EntryId::new(999999)).unwrap_err();
+
+        assert!(matches!(err, DatabaseError::NotFound));
     }
 }

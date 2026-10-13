@@ -13,9 +13,6 @@ use crate::{
 
 #[derive(Debug, Error)]
 pub enum EntryCommandError {
-    #[error("failed to create new entry")]
-    FailedToCreateNewEntry,
-
     #[error(transparent)]
     Service(#[from] EntryServiceError),
 
@@ -25,7 +22,6 @@ pub enum EntryCommandError {
 impl Serialize for EntryCommandError {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let kind = match self {
-            Self::FailedToCreateNewEntry => "failedToCreateNewEntry",
             Self::Service(_) => "service",
             Self::State(_) => "state",
         };
@@ -154,7 +150,7 @@ pub fn list_entries(state: State<AppState>) -> Result<EntryListDto, EntryCommand
 }
 
 #[tauri::command]
-pub fn update_form(
+pub fn update_entry_form(
     state: State<AppState>,
     entry_id: i64,
     entry_form: &str,
@@ -169,7 +165,7 @@ pub fn update_form(
 }
 
 #[tauri::command]
-pub fn update_morph_type(
+pub fn update_entry_morph_type(
     state: State<AppState>,
     entry_id: i64,
     morph_type_id: Option<i64>,
@@ -184,7 +180,7 @@ pub fn update_morph_type(
 }
 
 #[tauri::command]
-pub fn add_pronunciation(
+pub fn add_entry_pronunciation(
     state: State<AppState>,
     value: &str,
     description: Option<&str>,
@@ -200,7 +196,7 @@ pub fn add_pronunciation(
 }
 
 #[tauri::command]
-pub fn update_pronunciation_value(
+pub fn update_entry_pronunciation_value(
     state: State<AppState>,
     id: i64,
     value: &str,
@@ -216,7 +212,7 @@ pub fn update_pronunciation_value(
 }
 
 #[tauri::command]
-pub fn update_pronunciation_description(
+pub fn update_entry_pronunciation_description(
     state: State<AppState>,
     id: i64,
     description: Option<&str>,
@@ -236,7 +232,7 @@ pub fn update_pronunciation_description(
 }
 
 #[tauri::command]
-pub fn move_pronunciation(
+pub fn move_entry_pronunciation(
     state: State<AppState>,
     id: i64,
     new_position: i64,
@@ -252,7 +248,7 @@ pub fn move_pronunciation(
 }
 
 #[tauri::command]
-pub fn remove_pronunciation(
+pub fn remove_entry_pronunciation(
     state: State<AppState>,
     id: i64,
     entry_id: i64,
@@ -266,7 +262,7 @@ pub fn remove_pronunciation(
 }
 
 #[tauri::command]
-pub fn add_sense(
+pub fn add_entry_sense(
     state: State<AppState>,
     translation: &str,
     definition: Option<&str>,
@@ -288,7 +284,7 @@ pub fn add_sense(
 }
 
 #[tauri::command]
-pub fn update_sense_translation(
+pub fn update_entry_sense_translation(
     state: State<AppState>,
     id: i64,
     translation: &str,
@@ -308,7 +304,7 @@ pub fn update_sense_translation(
 }
 
 #[tauri::command]
-pub fn update_sense_definition(
+pub fn update_entry_sense_definition(
     state: State<AppState>,
     id: i64,
     definition: Option<&str>,
@@ -328,7 +324,7 @@ pub fn update_sense_definition(
 }
 
 #[tauri::command]
-pub fn update_sense_category(
+pub fn update_entry_sense_category(
     state: State<AppState>,
     id: i64,
     category_id: Option<i64>,
@@ -344,7 +340,7 @@ pub fn update_sense_category(
 }
 
 #[tauri::command]
-pub fn move_sense(
+pub fn move_entry_sense(
     state: State<AppState>,
     id: i64,
     new_position: i64,
@@ -359,7 +355,7 @@ pub fn move_sense(
 }
 
 #[tauri::command]
-pub fn remove_sense(
+pub fn remove_entry_sense(
     state: State<AppState>,
     id: i64,
     entry_id: i64,
