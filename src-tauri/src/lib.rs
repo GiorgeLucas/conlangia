@@ -30,9 +30,24 @@ pub fn run() {
         })
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            commands::projects::create_project,
-            commands::projects::open_project,
-            commands::projects::list_projects,
+            commands::project::create_project,
+            commands::project::open_project,
+            commands::project::list_projects,
+            commands::entry::create_entry,
+            commands::entry::list_entries,
+            commands::entry::update_form,
+            commands::entry::update_morph_type,
+            commands::entry::add_pronunciation,
+            commands::entry::update_pronunciation_value,
+            commands::entry::update_pronunciation_description,
+            commands::entry::move_pronunciation,
+            commands::entry::remove_pronunciation,
+            commands::entry::add_sense,
+            commands::entry::update_sense_translation,
+            commands::entry::update_sense_definition,
+            commands::entry::update_sense_category,
+            commands::entry::move_sense,
+            commands::entry::remove_sense,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

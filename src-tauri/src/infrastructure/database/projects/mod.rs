@@ -1,3 +1,4 @@
+pub mod repositories;
 use rusqlite::Connection;
 
 use crate::infrastructure::database::DatabaseError;
@@ -7,6 +8,8 @@ mod embedded {
 }
 
 pub fn run_migrations(conn: &mut Connection) -> Result<(), DatabaseError> {
-    embedded::migrations::runner().run(conn).map_err(DatabaseError::FailedToRunMigrations)?;
+    embedded::migrations::runner()
+        .run(conn)
+        .map_err(DatabaseError::FailedToRunMigrations)?;
     Ok(())
 }

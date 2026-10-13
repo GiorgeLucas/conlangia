@@ -22,7 +22,7 @@ pub enum ProjectCommandError {
     #[error("failed to list projects")]
     FailedToListProjects,
 
-    #[error("state error: {0}")]
+    #[error(transparent)]
     StateError(#[from] StateError),
 }
 

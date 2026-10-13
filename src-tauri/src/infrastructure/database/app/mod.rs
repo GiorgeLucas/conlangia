@@ -1,5 +1,5 @@
 pub mod projects_list;
-pub use projects_list::{ProjectsListRow, ProjectsListStore};
+pub use projects_list::ProjectsListStore;
 use rusqlite::Connection;
 
 use crate::infrastructure::database::DatabaseError;

@@ -12,6 +12,12 @@ pub enum DatabaseError {
     #[error("failed to enable foreign keys: {0}")]
     FailedToEnableForeignKeys(#[source] rusqlite::Error),
 
+    #[error("failed to start transaction: {0}")]
+    FailedToStartTransaction(#[source] rusqlite::Error),
+
+    #[error("failed to commit transaction: {0}")]
+    FailedToCommitTransaction(#[source] rusqlite::Error),
+
     #[error("failed to insert data: {0}")]
     FailedToInsertData(#[source] rusqlite::Error),
 
@@ -26,4 +32,10 @@ pub enum DatabaseError {
 
     #[error("failed to run migrations: {0}")]
     FailedToRunMigrations(#[source] refinery::Error),
+
+    #[error("stored data is invalid")]
+    InvalidStoredData,
+
+    #[error("data not found")]
+    NotFound,
 }

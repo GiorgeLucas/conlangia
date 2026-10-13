@@ -4,14 +4,14 @@ use rusqlite::Connection;
 use thiserror::Error;
 
 use crate::{
-    commands::projects::ProjectDto,
+    commands::project::ProjectDto,
     infrastructure::{self, InfrastructureError},
     models::project::ProjectMetadata,
 };
 
 #[derive(Debug, Error)]
 pub enum ProjectServiceError {
-    #[error("infrastructure error: {0}")]
+    #[error(transparent)]
     InfrastructureError(#[from] InfrastructureError),
 
     #[error("project name cannot be blank")]
@@ -46,7 +46,7 @@ pub fn create_project(
     };
 
     let mut app_store = infrastructure::database::app::ProjectsListStore::new(app_db);
-    app_store.add(&project_dir.to_string_lossy().to_string())?;
+    app_store.add(project_dir.to_string_lossy().as_ref())?;
 
     Ok((project_dto, connection))
 }
@@ -59,7 +59,7 @@ pub fn open_project(
 
     let metadata = infrastructure::projects::open_project_metadata_file(&metadata_path)?;
 
-    let connection = infrastructure::projects::open_project_database(&project_dir)?;
+    let connection = infrastructure::projects::open_project_database(project_dir)?;
 
     let project_dto = ProjectDto {
         metadata: Some(metadata),
@@ -68,10 +68,10 @@ pub fn open_project(
 
     let mut app_store = infrastructure::database::app::ProjectsListStore::new(app_db);
 
-    let check = app_store.get_by_path(&project_dir.to_string_lossy().to_string())?;
+    let check = app_store.get_by_path(project_dir.to_string_lossy().as_ref())?;
 
     if check.is_none() {
-        app_store.add(&project_dir.to_string_lossy().to_string())?;
+        app_store.add(project_dir.to_string_lossy().as_ref())?;
     }
 
     Ok((project_dto, connection))

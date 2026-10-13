@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS entries (
     id INTEGER NOT NULL PRIMARY KEY,
     entry_form TEXT NOT NULL,
     morph_type_id INTEGER,
-    FOREIGN KEY (morph_type_id) REFERENCES morph_types (id)
+    FOREIGN KEY (morph_type_id) REFERENCES morph_types (id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS pronunciations (
@@ -24,8 +24,7 @@ CREATE TABLE IF NOT EXISTS pronunciations (
     description TEXT,
     sort_order INTEGER NOT NULL,
     entry_id INTEGER NOT NULL,
-    FOREIGN KEY (entry_id) REFERENCES entries (id) ON DELETE CASCADE,
-    UNIQUE (entry_id, sort_order)
+    FOREIGN KEY (entry_id) REFERENCES entries (id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS senses (
@@ -34,8 +33,7 @@ CREATE TABLE IF NOT EXISTS senses (
     definition TEXT,
     sort_order INTEGER NOT NULL,
     entry_id INTEGER NOT NULL,
-    category_id INTEGER NOT NULL,
+    category_id INTEGER,
     FOREIGN KEY (entry_id) REFERENCES entries (id) ON DELETE CASCADE,
-    FOREIGN KEY (category_id) REFERENCES categories (id),
-    UNIQUE (entry_id, sort_order)
+    FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE SET NULL
 );

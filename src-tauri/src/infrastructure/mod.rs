@@ -7,7 +7,7 @@ pub mod projects;
 
 #[derive(Debug, Error)]
 pub enum InfrastructureError {
-    #[error("database error: {0}")]
+    #[error(transparent)]
     Database(#[from] DatabaseError),
 
     #[error("failed to serialize/deserialize data: {0}")]

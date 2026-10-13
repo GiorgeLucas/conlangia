@@ -11,6 +11,9 @@ use crate::models::project::ProjectMetadata;
 pub enum StateError {
     #[error("failed to lock app state")]
     FailedToLockAppState,
+
+    #[error("project is not loaded")]
+    ProjectIsNotLoaded,
 }
 
 pub struct CurrentProject {
