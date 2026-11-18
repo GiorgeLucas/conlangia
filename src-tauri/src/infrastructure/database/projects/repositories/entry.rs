@@ -470,8 +470,22 @@ mod tests {
         insert_pronunciation(&mut conn, entry_id, "pron 1", Some("desc 1"), 1);
         insert_pronunciation(&mut conn, entry_id, "pron 2", None, 2);
 
-        insert_sense(&mut conn, entry_id, "translation 1", Some("definition 1"), 1, None);
-        insert_sense(&mut conn, entry_id, "translation 2", Some("definition 2"), 2, None);
+        insert_sense(
+            &mut conn,
+            entry_id,
+            "translation 1",
+            Some("definition 1"),
+            1,
+            None,
+        );
+        insert_sense(
+            &mut conn,
+            entry_id,
+            "translation 2",
+            Some("definition 2"),
+            2,
+            None,
+        );
 
         let repo = EntryRepository::new(&mut conn);
 

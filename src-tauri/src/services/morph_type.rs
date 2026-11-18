@@ -3,13 +3,10 @@ use thiserror::Error;
 
 use crate::{
     infrastructure::{
-        database::DatabaseError,
-        database::projects::repositories::morph_type::MorphTypeRepository,
+        database::projects::repositories::morph_type::MorphTypeRepository, database::DatabaseError,
         InfrastructureError,
     },
-    models::morph_type::{
-        MorphType, MorphTypeCode, MorphTypeError, MorphTypeId, MorphTypeLabel,
-    },
+    models::morph_type::{MorphType, MorphTypeCode, MorphTypeError, MorphTypeId, MorphTypeLabel},
 };
 
 #[derive(Debug, Error)]
@@ -39,7 +36,9 @@ pub fn create_morph_type(
     Ok(repo.save(&morph_type)?)
 }
 
-pub fn list_morph_types(project_conn: &mut Connection) -> Result<Vec<MorphType>, MorphTypeServiceError> {
+pub fn list_morph_types(
+    project_conn: &mut Connection,
+) -> Result<Vec<MorphType>, MorphTypeServiceError> {
     let repo = MorphTypeRepository::new(project_conn);
 
     Ok(repo.list()?)

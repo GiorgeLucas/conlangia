@@ -13,6 +13,7 @@ mod state;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir()?;
 
@@ -32,8 +33,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::project::create_project,
             commands::project::open_project,
+            commands::project::close_project,
             commands::project::list_projects,
-
             commands::entry::create_entry,
             commands::entry::list_entries,
             commands::entry::update_entry_form,
@@ -49,13 +50,11 @@ pub fn run() {
             commands::entry::update_entry_sense_category,
             commands::entry::move_entry_sense,
             commands::entry::remove_entry_sense,
-
             commands::category::create_category,
             commands::category::list_categories,
             commands::category::update_category_name,
             commands::category::update_category_description,
             commands::category::delete_category,
-
             commands::morph_type::create_morph_type,
             commands::morph_type::list_morph_types,
             commands::morph_type::update_morph_type_code,

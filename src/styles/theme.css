@@ -1,0 +1,55 @@
+@import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/source-serif-4";
+@import "@fontsource/gentium-plus";
+
+@theme {
+ 
+
+  --color-white: #fff;
+  --color-black: #000;
+
+  --color-neutral-50: #e7e6e8;
+  --color-neutral-100: #cfcdd1;
+  --color-neutral-200: #b7b4ba;
+  --color-neutral-300: #9e9ba3;
+  --color-neutral-400: #86828c;
+  --color-neutral-500: #6e6975;
+  --color-neutral-600: #56505e;
+  --color-neutral-700: #3e3747;
+  --color-neutral-800: #261e30;
+  --color-neutral-900: #0d0519;
+
+  --color-accent-50: #f8f5ff;
+  --color-accent-100: #ede5ff;
+  --color-accent-200: #dbccff;
+  --color-accent-300: #c9b3ff;
+  --color-accent-400: #b899ff;
+  --color-accent-500: #9466ff;
+  --color-accent-600: #824cff;
+  --color-accent-700: #6f31ff;
+  --color-accent-800: #4e22b2;
+  --color-accent-900: #210f4d;
+
+  --color-danger-50: #fff5f5;
+  --color-danger-100: #ffe5e5;
+  --color-danger-200: #ffcccc;
+  --color-danger-300: #ffb2b2;
+  --color-danger-400: #ff9999;
+  --color-danger-500: #ff7f7f;
+  --color-danger-600: #ff6666;
+  --color-danger-700: #ff3131;
+  --color-danger-800: #991d1d;
+  --color-danger-900: #4c0f0f;
+
+  --font-sans: "Inter Variable", sans-serif;
+  --font-fraunces: "Fraunces Variable";
+  --font-inter: "Inter Variable";
+  --font-source-serif-4: "Source Serif 4 Variable";
+  --font-gentium-plus: "Gentium Plus";
+}
+
+::selection {
+  background-color: var(--color-accent-700); 
+  color: white;
+}

@@ -158,8 +158,7 @@ pub fn update_entry_form(
     let mut guard = state::lock_state_current_project(&state)?;
     let project = guard.as_mut().ok_or(StateError::ProjectIsNotLoaded)?;
 
-    let entry =
-        services::entry::update_form(&mut project.connection, entry_id, entry_form)?;
+    let entry = services::entry::update_form(&mut project.connection, entry_id, entry_form)?;
 
     Ok(EntryDto::from_saved(&entry))
 }

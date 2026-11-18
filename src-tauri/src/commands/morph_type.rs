@@ -3,7 +3,8 @@ use tauri::State;
 use thiserror::Error;
 
 use crate::{
-    services::{self, morph_type::MorphTypeServiceError}, state::{self, AppState, StateError},
+    services::{self, morph_type::MorphTypeServiceError},
+    state::{self, AppState, StateError},
 };
 
 #[derive(Debug, Error)]
@@ -41,10 +42,7 @@ pub struct MorphTypeDto {
 impl MorphTypeDto {
     fn from_saved(morph_type: &crate::models::morph_type::MorphType) -> Self {
         Self {
-            id: morph_type
-                .id()
-                .expect("saved morph type has an id")
-                .get(),
+            id: morph_type.id().expect("saved morph type has an id").get(),
             code: morph_type.code().as_str().to_string(),
             label: morph_type.label().as_str().to_string(),
             is_bound: morph_type.is_bound(),
@@ -69,7 +67,9 @@ pub fn create_morph_type(
 }
 
 #[tauri::command]
-pub fn list_morph_types(state: State<AppState>) -> Result<Vec<MorphTypeDto>, MorphTypeCommandError> {
+pub fn list_morph_types(
+    state: State<AppState>,
+) -> Result<Vec<MorphTypeDto>, MorphTypeCommandError> {
     let mut guard = state::lock_state_current_project(&state)?;
     let project = guard.as_mut().ok_or(StateError::ProjectIsNotLoaded)?;
 
@@ -118,17 +118,13 @@ pub fn update_morph_type_bound(
     let mut guard = state::lock_state_current_project(&state)?;
     let project = guard.as_mut().ok_or(StateError::ProjectIsNotLoaded)?;
 
-    let morph_type =
-        services::morph_type::update_bound(&mut project.connection, id, is_bound)?;
+    let morph_type = services::morph_type::update_bound(&mut project.connection, id, is_bound)?;
 
     Ok(MorphTypeDto::from_saved(&morph_type))
 }
 
 #[tauri::command]
-pub fn delete_morph_type(
-    state: State<AppState>,
-    id: i64,
-) -> Result<(), MorphTypeCommandError> {
+pub fn delete_morph_type(state: State<AppState>, id: i64) -> Result<(), MorphTypeCommandError> {
     let mut guard = state::lock_state_current_project(&state)?;
     let project = guard.as_mut().ok_or(StateError::ProjectIsNotLoaded)?;
 

@@ -103,6 +103,15 @@ pub fn open_project(
 }
 
 #[tauri::command]
+pub fn close_project(state: State<AppState>) -> Result<(), ProjectCommandError> {
+    let mut project_guard = state::lock_state_current_project(&state)?;
+
+    *project_guard = None;
+
+    Ok(())
+}
+
+#[tauri::command]
 pub fn list_projects(state: State<AppState>) -> Result<Vec<ProjectDto>, ProjectCommandError> {
     let mut project_guard = state::lock_state_app(&state)?;
 

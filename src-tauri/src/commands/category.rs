@@ -104,10 +104,7 @@ pub fn update_category_description(
 }
 
 #[tauri::command]
-pub fn delete_category(
-    state: State<AppState>,
-    id: i64,
-) -> Result<(), CategoryCommandError> {
+pub fn delete_category(state: State<AppState>, id: i64) -> Result<(), CategoryCommandError> {
     let mut guard = state::lock_state_current_project(&state)?;
     let project = guard.as_mut().ok_or(StateError::ProjectIsNotLoaded)?;
 
