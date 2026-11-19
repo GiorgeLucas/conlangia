@@ -1,6 +1,10 @@
 import { useProject } from "@/contexts/ProjectContext";
 import { NavPage, useNavigation } from "@/contexts/NavigationContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import LexiconPage from "@/pages/Workspace/LexiconPage";
+import MorphologyPage from "@/pages/Workspace/MorphologyPage";
+import CategoriesPage from "@/pages/Workspace/CategoriesPage";
+import SettingsPage from "@/pages/Workspace/SettingsPage";
 import {
   BookOpen,
   Boxes,
@@ -8,6 +12,8 @@ import {
   Settings,
   ArrowLeft,
   Folder,
+  Moon,
+  Sun,
 } from "lucide-react";
 
 const NAV_ITEMS: { id: NavPage; label: string; icon: typeof BookOpen }[] = [
@@ -20,15 +26,14 @@ const NAV_ITEMS: { id: NavPage; label: string; icon: typeof BookOpen }[] = [
 export default function WorkspaceLayout() {
   const { currentProject, closeProject } = useProject();
   const { currentPage, setCurrentPage } = useNavigation();
+  const { theme, toggleTheme } = useTheme();
 
   const projectName = currentProject?.metadata?.name || "Untitled Project";
   const projectDesc = currentProject?.metadata?.description || currentProject?.project_dir;
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100 font-sans">
-      {/* Sidebar */}
       <aside className="flex w-64 flex-col border-r border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/60">
-        {/* Project Header in Sidebar */}
         <div className="flex flex-col border-b border-zinc-200 p-4 dark:border-zinc-800">
           <div className="flex items-center justify-between">
             <button
@@ -55,7 +60,6 @@ export default function WorkspaceLayout() {
           </div>
         </div>
 
-        {/* Navigation list */}
         <nav className="flex-1 space-y-1 p-3">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
@@ -77,80 +81,28 @@ export default function WorkspaceLayout() {
           })}
         </nav>
 
-        {/* Footer info */}
-        <div className="border-t border-zinc-200 p-3 text-[11px] text-zinc-400 dark:border-zinc-800">
-          <p className="truncate">Conlangia Workspace</p>
+        <div className="border-t border-zinc-200 p-3 dark:border-zinc-800">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-200"
+          >
+            {theme === "dark" ? <Moon size={16} /> : <Sun size={16} />}
+            <span>Theme</span>
+            <span className="ml-auto font-medium text-zinc-700 dark:text-zinc-300">
+              {theme === "dark" ? "Dark" : "Light"}
+            </span>
+          </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white dark:bg-zinc-950">
-        {currentPage === "lexicon" ? (
-          <LexiconPage />
-        ) : (
-          <>
-            <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-200 px-8 dark:border-zinc-800">
-              <h1 className="text-base font-semibold capitalize text-zinc-900 dark:text-zinc-100">
-                {currentPage}
-              </h1>
-            </header>
-
-            <section className="flex-1 overflow-y-auto p-8">
-              {currentPage === "morphology" && (
-                <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center dark:border-zinc-800">
-                  <Boxes className="mx-auto mb-3 size-10 text-zinc-300 dark:text-zinc-700" />
-                  <h3 className="text-base font-medium">Morphology View</h3>
-                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                    Define morphological types like roots, affixes, clitics, and bound forms.
-                  </p>
-                </div>
-              )}
-
-              {currentPage === "categories" && (
-                <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center dark:border-zinc-800">
-                  <Tags className="mx-auto mb-3 size-10 text-zinc-300 dark:text-zinc-700" />
-                  <h3 className="text-base font-medium">Grammatical Categories</h3>
-                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                    Organize parts of speech such as Nouns, Verbs, Particles, and Adjectives.
-                  </p>
-                </div>
-              )}
-
-              {currentPage === "settings" && (
-                <div className="max-w-2xl space-y-6">
-                  <div className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
-                    <h3 className="text-sm font-semibold">Project Details</h3>
-                    <dl className="mt-4 space-y-3 text-sm">
-                      <div>
-                        <dt className="text-xs text-zinc-400">Name</dt>
-                        <dd className="font-medium">{projectName}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-zinc-400">Description</dt>
-                        <dd className="text-zinc-600 dark:text-zinc-400">
-                          {currentProject?.metadata?.description || "No description provided."}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-zinc-400">Directory</dt>
-                        <dd className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-                          {currentProject?.project_dir}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs text-zinc-400">Created At</dt>
-                        <dd className="text-xs text-zinc-500">
-                          {currentProject?.metadata?.created_at
-                            ? new Date(currentProject.metadata.created_at).toLocaleString()
-                            : "Unknown"}
-                        </dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
-              )}
-            </section>
-          </>
+        {currentPage === "lexicon" && <LexiconPage />}
+        {currentPage === "morphology" && <MorphologyPage />}
+        {currentPage === "categories" && <CategoriesPage />}
+        {currentPage === "settings" && (
+          <SettingsPage project={currentProject} />
         )}
       </main>
     </div>

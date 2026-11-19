@@ -16,6 +16,7 @@ interface CustomSelectProps {
   className?: string;
   triggerClassName?: string;
   disabled?: boolean;
+  defaultOpen?: boolean;
 }
 
 export default function CustomSelect({
@@ -26,10 +27,13 @@ export default function CustomSelect({
   className = "",
   triggerClassName = "",
   disabled = false,
+  defaultOpen = false,
 }: CustomSelectProps) {
   return (
     <Select.Root
       value={value ?? ""}
+      items={options.map(({ value, label }) => ({ value, label }))}
+      defaultOpen={defaultOpen}
       onValueChange={(val) => {
         onValueChange(val === "" ? null : val);
       }}

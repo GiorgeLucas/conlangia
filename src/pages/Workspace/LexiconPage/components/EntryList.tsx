@@ -34,7 +34,6 @@ export default function EntryList({
 
   return (
     <aside className="flex w-[380px] lg:w-[420px] shrink-0 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      {/* Header with Search and Add button */}
       <div className="flex flex-col gap-3 border-b border-zinc-200 p-4 dark:border-zinc-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -55,7 +54,6 @@ export default function EntryList({
           </Button>
         </div>
 
-        {/* Search input */}
         <div className="relative">
           <Search
             size={15}
@@ -79,7 +77,6 @@ export default function EntryList({
         </div>
       </div>
 
-      {/* List */}
       <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-900">
         {isLoading && entries.length === 0 ? (
           <div className="p-8 text-center text-xs text-zinc-400">

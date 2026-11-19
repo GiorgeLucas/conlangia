@@ -20,6 +20,10 @@ export default function Input({ className = "", ...props }: InputProps) {
         focus:border-accent-700
         focus:ring-1
         focus:ring-accent-700
+        dark:border-zinc-800
+        dark:bg-zinc-900
+        dark:text-zinc-100
+        dark:placeholder:text-zinc-500
         ${className}
       `}
       {...props}

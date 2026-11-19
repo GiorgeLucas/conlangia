@@ -1,8 +1,13 @@
 import { useState, useMemo } from "react";
 import { EntryListRowDto } from "@/api/entries";
 import { MorphTypeDto } from "@/api/morphTypes";
-import { Plus, Search, X, BookOpen, ArrowUpDown } from "lucide-react";
+import { Plus, Search, X, BookOpen } from "lucide-react";
 import Button from "@/ui/Button";
+import Badge from "@/ui/Badge";
+import SortableTableHeader from "@/ui/SortableTableHeader";
+
+type SortColumn = "entryForm" | "pronunciation" | "translations" | "type";
+type SortDirection = "asc" | "desc";
 
 interface EntryTableProps {
   entries: EntryListRowDto[];
@@ -22,9 +27,21 @@ export default function EntryTable({
   isLoading,
 }: EntryTableProps) {
   const [search, setSearch] = useState("");
-  const [sortAsc, setSortAsc] = useState(true);
+  const [sort, setSort] = useState<{
+    column: SortColumn;
+    direction: SortDirection;
+  }>({ column: "entryForm", direction: "asc" });
 
-  // Map of morphTypeId -> MorphTypeDto for quick lookup
+  const handleSort = (column: SortColumn) => {
+    setSort((current) => ({
+      column,
+      direction:
+        current.column === column && current.direction === "asc"
+          ? "desc"
+          : "asc",
+    }));
+  };
+
   const morphTypeMap = useMemo(() => {
     const map = new Map<number, MorphTypeDto>();
     for (const mt of morphTypes) {
@@ -33,7 +50,6 @@ export default function EntryTable({
     return map;
   }, [morphTypes]);
 
-  // Filter and sort entries
   const processedEntries = useMemo(() => {
     let result = entries;
 
@@ -49,14 +65,36 @@ export default function EntryTable({
     }
 
     return [...result].sort((a, b) => {
-      const cmp = a.entryForm.localeCompare(b.entryForm);
-      return sortAsc ? cmp : -cmp;
+      const getValue = (entry: EntryListRowDto): string | null => {
+        switch (sort.column) {
+          case "entryForm":
+            return entry.entryForm;
+          case "pronunciation":
+            return entry.primaryPronunciation;
+          case "translations":
+            return entry.translations.join("; ") || null;
+          case "type":
+            return entry.morphTypeId == null
+              ? null
+              : morphTypeMap.get(entry.morphTypeId)?.label ?? null;
+        }
+      };
+      const left = getValue(a);
+      const right = getValue(b);
+      if (left == null || right == null) {
+        if (left == null && right == null) return 0;
+        return left == null ? 1 : -1;
+      }
+      const comparison = left.localeCompare(right, undefined, {
+        sensitivity: "base",
+        numeric: true,
+      });
+      return sort.direction === "asc" ? comparison : -comparison;
     });
-  }, [entries, search, sortAsc]);
+  }, [entries, morphTypeMap, search, sort]);
 
   return (
     <div className="flex flex-1 min-w-[380px] flex-col border-r border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-      {/* Top action bar: Title, Count, Search and Add Word Button */}
       <div className="flex flex-col gap-3.5 border-b border-zinc-200/80 p-5 dark:border-zinc-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -77,7 +115,6 @@ export default function EntryTable({
           </Button>
         </div>
 
-        {/* Search Input Bar */}
         <div className="relative">
           <Search
             size={16}
@@ -88,7 +125,7 @@ export default function EntryTable({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search entries, phonetics or translations…"
-            className="h-10 w-full rounded-xl border border-zinc-200/80 bg-zinc-50/70 pl-10 pr-9 text-sm text-zinc-800 outline-none placeholder:text-zinc-400 transition-all focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-500/20 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-200 dark:focus:border-violet-500"
+            className="h-10 w-full rounded-xl border border-zinc-200/80 bg-zinc-50/70 pl-10 pr-9 text-sm text-zinc-800 outline-none placeholder:text-zinc-400 transition-all focus:border-violet-500 focus:bg-white focus:ring-2 focus:ring-violet-500/20 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-200 dark:focus:border-violet-500 dark:focus:bg-zinc-900/60"
           />
           {search && (
             <button
@@ -101,29 +138,47 @@ export default function EntryTable({
         </div>
       </div>
 
-      {/* Modern Data Table */}
-      <div className="min-h-0 flex-1 overflow-auto">
-        <table className="w-full text-left border-collapse">
-          {/* Sticky Table Header */}
-          <thead className="sticky top-0 z-10 bg-zinc-50/95 backdrop-blur-xs border-b border-zinc-200/80 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:bg-zinc-900/90 dark:border-zinc-800">
+      <div className="workspace-table-scrollbar min-h-0 flex-1 overflow-auto pr-3">
+        <table className="w-full table-fixed text-left border-collapse">
+          <colgroup>
+            <col className="w-[24%]" />
+            <col className="w-[22%]" />
+            <col />
+            <col className="w-28" />
+          </colgroup>
+          <thead className="sticky top-0 z-10 bg-zinc-50 border-b border-zinc-200/80 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:bg-zinc-900 dark:border-zinc-800">
             <tr>
-              <th className="py-3 px-5">
-                <button
-                  type="button"
-                  onClick={() => setSortAsc((prev) => !prev)}
-                  className="flex items-center gap-1.5 transition hover:text-zinc-700 dark:hover:text-zinc-200 hover:cursor-pointer"
-                >
-                  <span>Entry Form</span>
-                  <ArrowUpDown size={12} />
-                </button>
-              </th>
-              <th className="py-3 px-4">Pronunciation</th>
-              <th className="py-3 px-4">Senses / Translations</th>
-              <th className="py-3 px-5 text-right">Type</th>
+              <SortableTableHeader
+                label="Entry Form"
+                active={sort.column === "entryForm"}
+                direction={sort.direction}
+                onClick={() => handleSort("entryForm")}
+                className="py-3 px-5"
+              />
+              <SortableTableHeader
+                label="Pronunciation"
+                active={sort.column === "pronunciation"}
+                direction={sort.direction}
+                onClick={() => handleSort("pronunciation")}
+                className="py-3 px-4"
+              />
+              <SortableTableHeader
+                label="Translations"
+                active={sort.column === "translations"}
+                direction={sort.direction}
+                onClick={() => handleSort("translations")}
+                className="py-3 px-4"
+              />
+              <SortableTableHeader
+                label="Type"
+                active={sort.column === "type"}
+                direction={sort.direction}
+                onClick={() => handleSort("type")}
+                className="py-3 px-5 text-right [&>button]:ml-auto"
+              />
             </tr>
           </thead>
 
-          {/* Table Body */}
           <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
             {isLoading && entries.length === 0 ? (
               <tr>
@@ -162,13 +217,12 @@ export default function EntryTable({
                   <tr
                     key={entry.id}
                     onClick={() => onSelect(entry.id)}
-                    className={`group transition-all hover:cursor-pointer ${
+                    className={`group hover:cursor-pointer ${
                       isSelected
                         ? "bg-violet-50/90 text-violet-950 dark:bg-violet-950/30 dark:text-violet-100"
                         : "hover:bg-zinc-50/70 dark:hover:bg-zinc-900/50"
                     }`}
                   >
-                    {/* Word Form */}
                     <td className="py-3.5 px-5">
                       <div className="flex items-center gap-2">
                         <span
@@ -183,7 +237,6 @@ export default function EntryTable({
                       </div>
                     </td>
 
-                    {/* Pronunciation */}
                     <td className="py-3.5 px-4">
                       {entry.primaryPronunciation ? (
                         <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300 font-sans tracking-wide">
@@ -194,7 +247,6 @@ export default function EntryTable({
                       )}
                     </td>
 
-                    {/* Senses / Translations */}
                     <td className="py-3.5 px-4 text-sm max-w-[240px]">
                       {entry.translations.length > 0 ? (
                         <span className="truncate block font-normal text-zinc-700 dark:text-zinc-300">
@@ -205,15 +257,21 @@ export default function EntryTable({
                       )}
                     </td>
 
-                    {/* Morph Type Badge */}
                     <td className="py-3.5 px-5 text-right">
-                      {morphType ? (
-                        <span className="inline-block rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-600/10 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-500/20">
-                          {morphType.label}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
-                      )}
+                      <span className="inline-flex h-7 items-center">
+                        {morphType ? (
+                          <Badge
+                            variant="accent"
+                            size="xs"
+                            title={morphType.label}
+                            className="max-w-full overflow-hidden"
+                          >
+                            <span className="truncate">{morphType.label}</span>
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
+                        )}
+                      </span>
                     </td>
                   </tr>
                 );

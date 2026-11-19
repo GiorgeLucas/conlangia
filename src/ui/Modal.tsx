@@ -19,7 +19,7 @@ export function Modal({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-40 bg-zinc-950/40 backdrop-blur-[2px] data-open:animate-[fadeIn_.15s_ease-out]" />
-        <Dialog.Popup className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,480px)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-zinc-200 bg-white p-6 text-zinc-900 outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
+        <Dialog.Popup className="fixed left-1/2 top-1/2 z-50 w-[min(92vw,480px)] -translate-x-1/2 -translate-y-1/2 select-none rounded-xl border border-zinc-200 bg-white p-6 text-zinc-900 outline-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable=true]]:select-text dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
           <Dialog.Title className="pr-8 text-lg font-semibold">
             {title}
           </Dialog.Title>

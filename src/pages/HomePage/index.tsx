@@ -2,16 +2,27 @@ import Button from "@/ui/Button";
 import CreateProjectDialog from "@/ui/dialogs/CreateProjectDialog";
 import OpenProjectDialog from "@/ui/dialogs/OpenProjectDialog";
 import ProjectRow from "./components/ProjectRow";
-import { FolderOpen, Plus, RefreshCw } from "lucide-react";
+import { FolderOpen, Moon, Plus, RefreshCw, Sun } from "lucide-react";
 import { useState } from "react";
 import { useProject } from "@/contexts/ProjectContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function HomePage() {
   const { recentProjects, isLoading, error, refreshRecentProjects } = useProject();
+  const { theme, toggleTheme } = useTheme();
   const [modal, setModal] = useState<"new" | "open" | null>(null);
 
   return (
-    <main className="h-screen overflow-hidden bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <main className="relative h-screen overflow-hidden bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      <button
+        type="button"
+        onClick={toggleTheme}
+        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+        title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+        className="absolute right-8 top-8 z-10 rounded-lg border border-zinc-200 p-2 text-zinc-500 transition hover:cursor-pointer hover:bg-zinc-100 hover:text-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+      >
+        {theme === "dark" ? <Moon size={16} /> : <Sun size={16} />}
+      </button>
       <div className="mx-auto flex h-full max-w-5xl flex-col px-10 py-10">
         <section className="flex min-h-0 flex-1 items-center gap-16">
           <div className="w-[42%] shrink-0">

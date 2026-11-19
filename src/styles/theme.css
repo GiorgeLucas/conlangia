@@ -1,7 +1,4 @@
-@import "@fontsource-variable/fraunces";
 @import "@fontsource-variable/inter";
-@import "@fontsource-variable/source-serif-4";
-@import "@fontsource/gentium-plus";
 
 @theme {
  
@@ -43,10 +40,26 @@
   --color-danger-900: #4c0f0f;
 
   --font-sans: "Inter Variable", sans-serif;
-  --font-fraunces: "Fraunces Variable";
   --font-inter: "Inter Variable";
-  --font-source-serif-4: "Source Serif 4 Variable";
-  --font-gentium-plus: "Gentium Plus";
+}
+
+:root {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+  --color-zinc-50: #f5f2f8;
+  --color-zinc-100: #ebe7f0;
+  --color-zinc-200: #d8d3e0;
+  --color-zinc-300: #bdb7c7;
+  --color-zinc-400: #9a94a5;
+  --color-zinc-500: #746e81;
+  --color-zinc-600: #565063;
+  --color-zinc-700: #3d3749;
+  --color-zinc-800: #2a2535;
+  --color-zinc-900: #191522;
+  --color-zinc-950: #100d18;
 }
 
 ::selection {

@@ -11,7 +11,6 @@ export interface ProjectDto {
   project_dir: string;
 }
 
-// Alias for backwards compatibility
 export type projectDto = ProjectDto;
 
 export function createProject(

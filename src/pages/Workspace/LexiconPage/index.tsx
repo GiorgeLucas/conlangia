@@ -25,30 +25,6 @@ export default function LexiconPage() {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  // Load all initial data for the lexicon
-  const loadLexiconData = useCallback(async () => {
-    setIsLoadingEntries(true);
-    try {
-      const [entriesRes, catsRes, morphsRes] = await Promise.all([
-        listEntries(),
-        listCategories(),
-        listMorphTypes(),
-      ]);
-      setEntries(entriesRes.rows);
-      setCategories(catsRes);
-      setMorphTypes(morphsRes);
-    } catch (err) {
-      console.error("Failed to load lexicon data:", err);
-    } finally {
-      setIsLoadingEntries(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadLexiconData();
-  }, [loadLexiconData]);
-
-  // Load selected entry details
   const handleSelectEntry = useCallback(async (id: number) => {
     setSelectedId(id);
     setIsLoadingDetail(true);
@@ -63,7 +39,35 @@ export default function LexiconPage() {
     }
   }, []);
 
-  // Sync entry changes back into the row list
+  const loadLexiconData = useCallback(async () => {
+    setIsLoadingEntries(true);
+    try {
+      const [entriesRes, catsRes, morphsRes] = await Promise.all([
+        listEntries(),
+        listCategories(),
+        listMorphTypes(),
+      ]);
+      setEntries(entriesRes.rows);
+      setCategories(catsRes);
+      setMorphTypes(morphsRes);
+      const firstEntry = [...entriesRes.rows].sort((a, b) =>
+        a.entryForm.localeCompare(b.entryForm, undefined, {
+          sensitivity: "base",
+          numeric: true,
+        })
+      )[0];
+      if (firstEntry) await handleSelectEntry(firstEntry.id);
+    } catch (err) {
+      console.error("Failed to load lexicon data:", err);
+    } finally {
+      setIsLoadingEntries(false);
+    }
+  }, [handleSelectEntry]);
+
+  useEffect(() => {
+    loadLexiconData();
+  }, [loadLexiconData]);
+
   const handleEntryUpdated = (updated: EntryDto) => {
     setSelectedEntry(updated);
     setEntries((prev) =>
@@ -110,7 +114,6 @@ export default function LexiconPage() {
 
   return (
     <div className="flex h-full w-full overflow-hidden">
-      {/* Table with all lexicon entries */}
       <EntryTable
         entries={entries}
         morphTypes={morphTypes}
@@ -120,8 +123,7 @@ export default function LexiconPage() {
         isLoading={isLoadingEntries}
       />
 
-      {/* Detail editor pane (kept strictly at ~460px-480px, in the 450px-500px range) */}
-      <div className="flex w-[460px] xl:w-[480px] shrink-0 flex-col overflow-y-auto bg-white dark:bg-zinc-950">
+      <div className="workspace-table-scrollbar flex w-[460px] xl:w-[480px] shrink-0 flex-col overflow-y-auto bg-white pr-3 dark:bg-zinc-950">
         {isLoadingDetail ? (
           <div className="flex flex-1 items-center justify-center text-sm text-zinc-400">
             Loading entry…
@@ -158,7 +160,6 @@ export default function LexiconPage() {
         )}
       </div>
 
-      {/* Creation Modal */}
       <CreateEntryDialog
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}

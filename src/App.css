@@ -11,3 +11,53 @@
     opacity: 1;
   }
 }
+
+.app-root :is(input, textarea, [contenteditable="true"], [contenteditable=""]) {
+  user-select: text;
+}
+
+.workspace-table-scrollbar {
+  scrollbar-color: #9466ff transparent;
+  scrollbar-width: thin;
+}
+
+.workspace-table-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.workspace-table-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workspace-table-scrollbar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background: #9466ff;
+  background-clip: padding-box;
+}
+
+.workspace-table-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6f31ff;
+  background-clip: padding-box;
+}
+
+:root.dark .workspace-table-scrollbar {
+  scrollbar-color: #9466ff transparent;
+}
+
+:root.dark .workspace-table-scrollbar::-webkit-scrollbar-thumb {
+  background: #9466ff;
+  background-clip: padding-box;
+}
+
+:root.dark .workspace-table-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6f31ff;
+  background-clip: padding-box;
+}
+
+html.theme-change-instant,
+html.theme-change-instant * {
+  transition: none !important;
+  animation: none !important;
+}
