@@ -77,6 +77,58 @@ pub fn open_project(
     Ok((project_dto, connection))
 }
 
+pub fn update_project(
+    project_dir: &Path,
+    name: &str,
+    description: Option<&str>,
+) -> Result<ProjectDto, ProjectServiceError> {
+    if is_string_blank(name) {
+        return Err(ProjectServiceError::ProjectNameIsBlank);
+    }
+
+    let metadata_path = project_dir.join("metadata.json");
+    let mut metadata = infrastructure::projects::open_project_metadata_file(&metadata_path)?;
+    metadata.name = name.trim().to_string();
+    metadata.description = description
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
+    infrastructure::projects::update_project_metadata_file(project_dir, &metadata)?;
+
+    Ok(ProjectDto {
+        metadata: Some(metadata),
+        project_dir: project_dir.to_string_lossy().to_string(),
+    })
+}
+
+pub fn remove_recent_project(
+    path: &str,
+    app_db: &mut Connection,
+) -> Result<(), ProjectServiceError> {
+    let mut store = infrastructure::database::app::ProjectsListStore::new(app_db);
+    store.remove_by_path(path)?;
+    Ok(())
+}
+
+pub fn delete_project(
+    project_dir: &Path,
+    app_db: &mut Connection,
+) -> Result<(), ProjectServiceError> {
+    infrastructure::projects::open_project_metadata_file(&project_dir.join("metadata.json"))?;
+    let path = project_dir.to_string_lossy().to_string();
+    remove_recent_project(&path, app_db)?;
+
+    if let Err(error) = std::fs::remove_dir_all(project_dir) {
+        let mut store = infrastructure::database::app::ProjectsListStore::new(app_db);
+        if let Err(restore_error) = store.add(&path) {
+            eprintln!("Failed to restore recent project after delete error: {restore_error}");
+        }
+        return Err(InfrastructureError::Io(error).into());
+    }
+
+    Ok(())
+}
+
 pub fn list_projects(app_db: &mut Connection) -> Result<Vec<ProjectDto>, ProjectServiceError> {
     let mut store = infrastructure::database::app::ProjectsListStore::new(app_db);
     let rows = store.list_all()?;
@@ -234,6 +286,94 @@ mod tests {
             let projects = list_projects(&mut app_db).unwrap();
             assert_eq!(projects.len(), 1);
             assert_eq!(projects[0].project_dir, new_path.to_string_lossy());
+        }
+    }
+
+    mod update_project {
+        use super::*;
+
+        #[test]
+        fn updates_name_and_description_without_changing_creation_time() {
+            let temp_dir = tempfile::tempdir().unwrap();
+            let mut app_db = app_db_connection();
+            let (project, connection) = create_project(
+                "before",
+                Some("old description"),
+                temp_dir.path(),
+                &mut app_db,
+            )
+            .unwrap();
+            drop(connection);
+            let created_at = project.metadata.as_ref().unwrap().created_at;
+
+            let updated = update_project(
+                Path::new(&project.project_dir),
+                " after ",
+                Some(" new description "),
+            )
+            .unwrap();
+
+            let metadata = updated.metadata.unwrap();
+            assert_eq!(metadata.name, "after");
+            assert_eq!(metadata.description.as_deref(), Some("new description"));
+            assert_eq!(metadata.created_at, created_at);
+            assert_eq!(
+                infrastructure::projects::open_project_metadata_file(
+                    &Path::new(&project.project_dir).join("metadata.json")
+                )
+                .unwrap()
+                .name,
+                "after"
+            );
+        }
+
+        #[test]
+        fn rejects_blank_name() {
+            let temp_dir = tempfile::tempdir().unwrap();
+            let mut app_db = app_db_connection();
+            let (project, connection) =
+                create_project("project", None, temp_dir.path(), &mut app_db).unwrap();
+            drop(connection);
+
+            assert!(update_project(Path::new(&project.project_dir), "  ", None).is_err());
+        }
+    }
+
+    mod delete_project {
+        use super::*;
+
+        #[test]
+        fn permanently_deletes_project_directory_and_recent_reference() {
+            let temp_dir = tempfile::tempdir().unwrap();
+            let mut app_db = app_db_connection();
+            let (project, connection) =
+                create_project("to delete", None, temp_dir.path(), &mut app_db).unwrap();
+            let project_dir = Path::new(&project.project_dir).to_path_buf();
+            drop(connection);
+
+            delete_project(&project_dir, &mut app_db).unwrap();
+
+            assert!(!project_dir.exists());
+            assert!(list_projects(&mut app_db).unwrap().is_empty());
+        }
+    }
+
+    mod recent_project {
+        use super::*;
+
+        #[test]
+        fn removing_from_recent_keeps_project_directory() {
+            let temp_dir = tempfile::tempdir().unwrap();
+            let mut app_db = app_db_connection();
+            let (project, connection) =
+                create_project("keep files", None, temp_dir.path(), &mut app_db).unwrap();
+            let project_dir = Path::new(&project.project_dir).to_path_buf();
+            drop(connection);
+
+            remove_recent_project(&project.project_dir, &mut app_db).unwrap();
+
+            assert!(project_dir.exists());
+            assert!(list_projects(&mut app_db).unwrap().is_empty());
         }
     }
 

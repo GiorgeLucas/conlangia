@@ -39,6 +39,14 @@ impl<'a> ProjectsListStore<'a> {
         Ok(())
     }
 
+    pub fn remove_by_path(&mut self, path: &str) -> Result<(), InfrastructureError> {
+        self.connection
+            .execute("DELETE FROM projects_list WHERE path = ?1", params![path])
+            .map_err(DatabaseError::FailedToDeleteData)?;
+
+        Ok(())
+    }
+
     pub fn get(&mut self, id: i64) -> Result<Option<ProjectsListRow>, InfrastructureError> {
         let result = self
             .connection

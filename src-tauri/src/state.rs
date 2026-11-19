@@ -18,6 +18,7 @@ pub enum StateError {
 
 pub struct CurrentProject {
     pub metadata: ProjectMetadata,
+    pub project_dir: String,
     pub connection: Connection,
 }
 

@@ -24,7 +24,12 @@ const NAV_ITEMS: { id: NavPage; label: string; icon: typeof BookOpen }[] = [
 ];
 
 export default function WorkspaceLayout() {
-  const { currentProject, closeProject } = useProject();
+  const {
+    currentProject,
+    closeProject,
+    updateProject,
+    deleteCurrentProject,
+  } = useProject();
   const { currentPage, setCurrentPage } = useNavigation();
   const { theme, toggleTheme } = useTheme();
 
@@ -102,7 +107,15 @@ export default function WorkspaceLayout() {
         {currentPage === "morphology" && <MorphologyPage />}
         {currentPage === "categories" && <CategoriesPage />}
         {currentPage === "settings" && (
-          <SettingsPage project={currentProject} />
+          <SettingsPage
+            project={currentProject}
+            onUpdateProject={(name, description) =>
+              currentProject
+                ? updateProject(currentProject.project_dir, name, description)
+                : Promise.resolve()
+            }
+            onDeleteProject={deleteCurrentProject}
+          />
         )}
       </main>
     </div>

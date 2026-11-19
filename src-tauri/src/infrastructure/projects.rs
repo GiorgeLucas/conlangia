@@ -34,6 +34,18 @@ pub fn create_project_metadata_file(
     Ok(metadata_file)
 }
 
+pub fn update_project_metadata_file(
+    project_dir: &Path,
+    metadata: &ProjectMetadata,
+) -> Result<(), InfrastructureError> {
+    let metadata_path = project_dir.join("metadata.json");
+    let metadata_json = serde_json::to_string_pretty(metadata)?;
+
+    fs::write(metadata_path, metadata_json)?;
+
+    Ok(())
+}
+
 pub fn open_project_metadata_file(
     metadata_path: &Path,
 ) -> Result<ProjectMetadata, InfrastructureError> {

@@ -5,6 +5,9 @@ import {
   openProject as apiOpenProject,
   createProject as apiCreateProject,
   closeProject as apiCloseProject,
+  updateProject as apiUpdateProject,
+  removeRecentProject as apiRemoveRecentProject,
+  deleteCurrentProject as apiDeleteCurrentProject,
 } from "@/api/projects";
 
 interface ProjectContextValue {
@@ -15,6 +18,13 @@ interface ProjectContextValue {
   refreshRecentProjects: () => Promise<void>;
   openProject: (path: string) => Promise<void>;
   createProject: (path: string, name: string, description?: string) => Promise<void>;
+  updateProject: (
+    path: string,
+    name: string,
+    description: string | null
+  ) => Promise<void>;
+  removeRecentProject: (path: string) => Promise<void>;
+  deleteCurrentProject: () => Promise<void>;
   closeProject: () => Promise<void>;
 }
 
@@ -69,6 +79,44 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateProject = async (
+    path: string,
+    name: string,
+    description: string | null
+  ) => {
+    setError(null);
+    const updated = await apiUpdateProject(path, name, description);
+    setRecentProjects((previous) =>
+      previous.map((project) =>
+        project.project_dir === updated.project_dir ? updated : project
+      )
+    );
+    setCurrentProject((current) =>
+      current?.project_dir === updated.project_dir ? updated : current
+    );
+  };
+
+  const removeRecentProject = async (path: string) => {
+    setError(null);
+    await apiRemoveRecentProject(path);
+    setRecentProjects((previous) =>
+      previous.filter((project) => project.project_dir !== path)
+    );
+  };
+
+  const deleteCurrentProject = async () => {
+    setError(null);
+    const projectDir = currentProject?.project_dir;
+    await apiDeleteCurrentProject();
+    setCurrentProject(null);
+    if (projectDir) {
+      setRecentProjects((previous) =>
+        previous.filter((project) => project.project_dir !== projectDir)
+      );
+    }
+    await refreshRecentProjects();
+  };
+
   const closeProject = async () => {
     try {
       await apiCloseProject();
@@ -89,6 +137,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
         refreshRecentProjects,
         openProject,
         createProject,
+        updateProject,
+        removeRecentProject,
+        deleteCurrentProject,
         closeProject,
       }}
     >

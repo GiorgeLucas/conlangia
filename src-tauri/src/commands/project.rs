@@ -1,4 +1,7 @@
-use std::{ops::DerefMut, path::Path};
+use std::{
+    ops::DerefMut,
+    path::{Path, PathBuf},
+};
 
 use serde::{Deserialize, Serialize};
 use tauri::State;
@@ -21,6 +24,15 @@ pub enum ProjectCommandError {
 
     #[error("failed to list projects")]
     FailedToListProjects,
+
+    #[error("failed to update project")]
+    FailedToUpdateProject,
+
+    #[error("failed to remove recent project")]
+    FailedToRemoveRecentProject,
+
+    #[error("failed to delete project")]
+    FailedToDeleteProject,
 
     #[error(transparent)]
     StateError(#[from] StateError),
@@ -60,6 +72,7 @@ pub fn create_project(
 
     let current_project = CurrentProject {
         metadata,
+        project_dir: project_dto.project_dir.clone(),
         connection,
     };
 
@@ -92,6 +105,7 @@ pub fn open_project(
 
     let current_project = CurrentProject {
         metadata,
+        project_dir: project_dto.project_dir.clone(),
         connection,
     };
 
@@ -121,4 +135,91 @@ pub fn list_projects(state: State<AppState>) -> Result<Vec<ProjectDto>, ProjectC
         .map_err(|_| ProjectCommandError::FailedToListProjects)?;
 
     Ok(projects)
+}
+
+#[tauri::command]
+pub fn update_project(
+    state: State<AppState>,
+    path: String,
+    name: String,
+    description: Option<String>,
+) -> Result<ProjectDto, ProjectCommandError> {
+    let project_dir = Path::new(&path);
+    let project_dto = services::project::update_project(project_dir, &name, description.as_deref())
+        .map_err(|_| ProjectCommandError::FailedToUpdateProject)?;
+
+    if let Some(metadata) = project_dto.metadata.clone() {
+        let mut project_guard = state::lock_state_current_project(&state)?;
+        if let Some(current_project) = project_guard.as_mut() {
+            if current_project.project_dir == project_dto.project_dir {
+                current_project.metadata = metadata;
+            }
+        }
+    }
+
+    Ok(project_dto)
+}
+
+#[tauri::command]
+pub fn remove_recent_project(
+    state: State<AppState>,
+    path: String,
+) -> Result<(), ProjectCommandError> {
+    let mut app_guard = state::lock_state_app(&state)?;
+    services::project::remove_recent_project(&path, app_guard.deref_mut())
+        .map_err(|_| ProjectCommandError::FailedToRemoveRecentProject)
+}
+
+#[tauri::command]
+pub fn delete_current_project(state: State<AppState>) -> Result<(), ProjectCommandError> {
+    let current_project = {
+        let mut project_guard = state::lock_state_current_project(&state)?;
+        project_guard.take().ok_or(StateError::ProjectIsNotLoaded)?
+    };
+    let project_dir = PathBuf::from(&current_project.project_dir);
+    let metadata = current_project.metadata.clone();
+    drop(current_project);
+
+    let delete_result = match state::lock_state_app(&state) {
+        Ok(mut app_guard) => services::project::delete_project(&project_dir, app_guard.deref_mut()),
+        Err(error) => {
+            restore_current_project(&state, &project_dir, metadata, &error);
+            return Err(error.into());
+        }
+    };
+
+    match delete_result {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            restore_current_project(&state, &project_dir, metadata, &error);
+            Err(ProjectCommandError::FailedToDeleteProject)
+        }
+    }
+}
+
+fn restore_current_project(
+    state: &State<AppState>,
+    project_dir: &Path,
+    metadata: ProjectMetadata,
+    error: &impl std::fmt::Display,
+) {
+    match crate::infrastructure::projects::open_project_database(project_dir) {
+        Ok(connection) => match state::lock_state_current_project(state) {
+            Ok(mut project_guard) => {
+                *project_guard = Some(CurrentProject {
+                    metadata,
+                    project_dir: project_dir.to_string_lossy().to_string(),
+                    connection,
+                });
+            }
+            Err(state_error) => {
+                eprintln!("Failed to restore current project after deletion error: {state_error}");
+            }
+        },
+        Err(reopen_error) => {
+            eprintln!(
+                "Failed to restore current project after deletion error ({error}): {reopen_error}"
+            );
+        }
+    }
 }

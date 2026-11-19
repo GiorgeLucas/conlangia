@@ -36,3 +36,23 @@ export function openProject(path: string): Promise<ProjectDto> {
 export function closeProject(): Promise<void> {
   return invoke<void>('close_project');
 }
+
+export function updateProject(
+  path: string,
+  name: string,
+  description: string | null
+): Promise<ProjectDto> {
+  return invoke<ProjectDto>('update_project', {
+    path,
+    name,
+    description,
+  });
+}
+
+export function removeRecentProject(path: string): Promise<void> {
+  return invoke<void>('remove_recent_project', { path });
+}
+
+export function deleteCurrentProject(): Promise<void> {
+  return invoke<void>('delete_current_project');
+}

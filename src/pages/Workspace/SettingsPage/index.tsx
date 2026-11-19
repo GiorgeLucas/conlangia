@@ -1,11 +1,27 @@
 import { ProjectDto } from "@/api/projects";
-import { Clock3, Folder, Info, Settings as SettingsIcon } from "lucide-react";
+import {
+  Clock3,
+  Folder,
+  Pencil,
+  Settings as SettingsIcon,
+  Trash2,
+} from "lucide-react";
+import { useState } from "react";
+import Button from "@/ui/Button";
+import EditProjectDialog from "@/ui/dialogs/EditProjectDialog";
+import DeleteProjectDialog from "@/ui/dialogs/DeleteProjectDialog";
 
 export default function SettingsPage({
   project,
+  onUpdateProject,
+  onDeleteProject,
 }: {
   project: ProjectDto | null;
+  onUpdateProject: (name: string, description: string | null) => Promise<void>;
+  onDeleteProject: () => Promise<void>;
 }) {
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const projectName = project?.metadata?.name || "Untitled Project";
   const projectDescription =
     project?.metadata?.description || "No description provided.";
@@ -34,21 +50,32 @@ export default function SettingsPage({
       <section className="flex-1 overflow-y-auto p-5 md:p-8">
         <div className="max-w-3xl space-y-5">
           <div className="rounded-xl border border-zinc-200/80 bg-white p-5 shadow-xs dark:border-zinc-800 dark:bg-zinc-900/40 md:p-6">
-            <div className="flex items-start gap-3">
-              <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">
-                <Folder size={19} />
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300">
+                  <Folder size={19} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-zinc-400">
+                    Current project
+                  </p>
+                  <h2 className="mt-1 truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                    {projectName}
+                  </h2>
+                  <p className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+                    {projectDescription}
+                  </p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-xs font-medium text-zinc-400">
-                  Current project
-                </p>
-                <h2 className="mt-1 truncate text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-                  {projectName}
-                </h2>
-                <p className="mt-1 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                  {projectDescription}
-                </p>
-              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setIsEditOpen(true)}
+                className="!h-8 !px-2.5 !text-xs"
+              >
+                <Pencil size={13} />
+                Edit
+              </Button>
             </div>
 
             <div className="mt-6 border-t border-zinc-100 dark:border-zinc-800" />
@@ -78,19 +105,41 @@ export default function SettingsPage({
             </dl>
           </div>
 
-          <div className="flex items-start gap-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 p-4 text-sm dark:border-zinc-800 dark:bg-zinc-900/30">
-            <Info
-              size={16}
-              className="mt-0.5 shrink-0 text-zinc-400"
-              aria-hidden="true"
-            />
-            <p className="text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
-              These details are read-only. Project metadata editing is not
-              currently available.
-            </p>
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-red-200/80 bg-red-50/50 p-4 dark:border-red-900/50 dark:bg-red-950/10">
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                Delete this project
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">
+                Permanently remove the project folder and all of its contents.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => setIsDeleteOpen(true)}
+              className="!h-8 shrink-0 !px-2.5 !text-xs"
+            >
+              <Trash2 size={13} />
+              Delete
+            </Button>
           </div>
         </div>
       </section>
+      <EditProjectDialog
+        project={project}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        onSave={async (_, name, description) =>
+          onUpdateProject(name, description)
+        }
+      />
+      <DeleteProjectDialog
+        open={isDeleteOpen}
+        projectName={projectName}
+        onOpenChange={setIsDeleteOpen}
+        onDelete={onDeleteProject}
+      />
     </div>
   );
 }
