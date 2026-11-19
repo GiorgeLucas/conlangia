@@ -69,6 +69,7 @@ pub struct EntryListRowDto {
     pub entry_form: String,
     pub primary_pronunciation: Option<String>,
     pub translations: Vec<String>,
+    pub morph_type_id: Option<i64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -143,10 +144,37 @@ pub fn list_entries(state: State<AppState>) -> Result<EntryListDto, EntryCommand
                 .iter()
                 .map(|s| s.translation().as_str().to_string())
                 .collect(),
+            morph_type_id: entry.morph_type_id().map(MorphTypeId::get),
         })
         .collect();
 
     Ok(EntryListDto { rows })
+}
+
+#[tauri::command]
+pub fn get_entry(
+    state: State<AppState>,
+    entry_id: i64,
+) -> Result<Option<EntryDto>, EntryCommandError> {
+    let mut guard = state::lock_state_current_project(&state)?;
+    let project = guard.as_mut().ok_or(StateError::ProjectIsNotLoaded)?;
+
+    let entry = services::entry::get_entry(&mut project.connection, entry_id)?;
+
+    Ok(entry.as_ref().map(EntryDto::from_saved))
+}
+
+#[tauri::command]
+pub fn delete_entry(
+    state: State<AppState>,
+    entry_id: i64,
+) -> Result<(), EntryCommandError> {
+    let mut guard = state::lock_state_current_project(&state)?;
+    let project = guard.as_mut().ok_or(StateError::ProjectIsNotLoaded)?;
+
+    services::entry::delete_entry(&mut project.connection, entry_id)?;
+
+    Ok(())
 }
 
 #[tauri::command]

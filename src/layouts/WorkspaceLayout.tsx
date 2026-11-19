@@ -1,5 +1,6 @@
 import { useProject } from "@/contexts/ProjectContext";
 import { NavPage, useNavigation } from "@/contexts/NavigationContext";
+import LexiconPage from "@/pages/Workspace/LexiconPage";
 import {
   BookOpen,
   Boxes,
@@ -84,77 +85,73 @@ export default function WorkspaceLayout() {
 
       {/* Main Content Area */}
       <main className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white dark:bg-zinc-950">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-200 px-8 dark:border-zinc-800">
-          <h1 className="text-base font-semibold capitalize text-zinc-900 dark:text-zinc-100">
-            {currentPage}
-          </h1>
-        </header>
+        {currentPage === "lexicon" ? (
+          <LexiconPage />
+        ) : (
+          <>
+            <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-200 px-8 dark:border-zinc-800">
+              <h1 className="text-base font-semibold capitalize text-zinc-900 dark:text-zinc-100">
+                {currentPage}
+              </h1>
+            </header>
 
-        <section className="flex-1 overflow-y-auto p-8">
-          {currentPage === "lexicon" && (
-            <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center dark:border-zinc-800">
-              <BookOpen className="mx-auto mb-3 size-10 text-zinc-300 dark:text-zinc-700" />
-              <h3 className="text-base font-medium">Lexicon View</h3>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                Manage your vocabulary, pronunciations, definitions, and senses.
-              </p>
-            </div>
-          )}
+            <section className="flex-1 overflow-y-auto p-8">
+              {currentPage === "morphology" && (
+                <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center dark:border-zinc-800">
+                  <Boxes className="mx-auto mb-3 size-10 text-zinc-300 dark:text-zinc-700" />
+                  <h3 className="text-base font-medium">Morphology View</h3>
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                    Define morphological types like roots, affixes, clitics, and bound forms.
+                  </p>
+                </div>
+              )}
 
-          {currentPage === "morphology" && (
-            <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center dark:border-zinc-800">
-              <Boxes className="mx-auto mb-3 size-10 text-zinc-300 dark:text-zinc-700" />
-              <h3 className="text-base font-medium">Morphology View</h3>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                Define morphological types like roots, affixes, clitics, and bound forms.
-              </p>
-            </div>
-          )}
+              {currentPage === "categories" && (
+                <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center dark:border-zinc-800">
+                  <Tags className="mx-auto mb-3 size-10 text-zinc-300 dark:text-zinc-700" />
+                  <h3 className="text-base font-medium">Grammatical Categories</h3>
+                  <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                    Organize parts of speech such as Nouns, Verbs, Particles, and Adjectives.
+                  </p>
+                </div>
+              )}
 
-          {currentPage === "categories" && (
-            <div className="rounded-xl border border-dashed border-zinc-200 p-8 text-center dark:border-zinc-800">
-              <Tags className="mx-auto mb-3 size-10 text-zinc-300 dark:text-zinc-700" />
-              <h3 className="text-base font-medium">Grammatical Categories</h3>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                Organize parts of speech such as Nouns, Verbs, Particles, and Adjectives.
-              </p>
-            </div>
-          )}
-
-          {currentPage === "settings" && (
-            <div className="max-w-2xl space-y-6">
-              <div className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
-                <h3 className="text-sm font-semibold">Project Details</h3>
-                <dl className="mt-4 space-y-3 text-sm">
-                  <div>
-                    <dt className="text-xs text-zinc-400">Name</dt>
-                    <dd className="font-medium">{projectName}</dd>
+              {currentPage === "settings" && (
+                <div className="max-w-2xl space-y-6">
+                  <div className="rounded-xl border border-zinc-200 p-6 dark:border-zinc-800">
+                    <h3 className="text-sm font-semibold">Project Details</h3>
+                    <dl className="mt-4 space-y-3 text-sm">
+                      <div>
+                        <dt className="text-xs text-zinc-400">Name</dt>
+                        <dd className="font-medium">{projectName}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-zinc-400">Description</dt>
+                        <dd className="text-zinc-600 dark:text-zinc-400">
+                          {currentProject?.metadata?.description || "No description provided."}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-zinc-400">Directory</dt>
+                        <dd className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                          {currentProject?.project_dir}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs text-zinc-400">Created At</dt>
+                        <dd className="text-xs text-zinc-500">
+                          {currentProject?.metadata?.created_at
+                            ? new Date(currentProject.metadata.created_at).toLocaleString()
+                            : "Unknown"}
+                        </dd>
+                      </div>
+                    </dl>
                   </div>
-                  <div>
-                    <dt className="text-xs text-zinc-400">Description</dt>
-                    <dd className="text-zinc-600 dark:text-zinc-400">
-                      {currentProject?.metadata?.description || "No description provided."}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-zinc-400">Directory</dt>
-                    <dd className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
-                      {currentProject?.project_dir}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-zinc-400">Created At</dt>
-                    <dd className="text-xs text-zinc-500">
-                      {currentProject?.metadata?.created_at
-                        ? new Date(currentProject.metadata.created_at).toLocaleString()
-                        : "Unknown"}
-                    </dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
-          )}
-        </section>
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </main>
     </div>
   );

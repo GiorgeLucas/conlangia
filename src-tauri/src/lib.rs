@@ -36,6 +36,8 @@ pub fn run() {
             commands::project::close_project,
             commands::project::list_projects,
             commands::entry::create_entry,
+            commands::entry::get_entry,
+            commands::entry::delete_entry,
             commands::entry::list_entries,
             commands::entry::update_entry_form,
             commands::entry::update_entry_morph_type,

@@ -57,6 +57,26 @@ pub fn list_entries(project_conn: &mut Connection) -> Result<Vec<Entry>, EntrySe
     Ok(repo.list()?)
 }
 
+pub fn get_entry(
+    project_conn: &mut Connection,
+    entry_id: i64,
+) -> Result<Option<Entry>, EntryServiceError> {
+    let repo = EntryRepository::new(project_conn);
+
+    Ok(repo.find_by_id(EntryId::new(entry_id))?)
+}
+
+pub fn delete_entry(
+    project_conn: &mut Connection,
+    entry_id: i64,
+) -> Result<(), EntryServiceError> {
+    let mut repo = EntryRepository::new(project_conn);
+
+    repo.delete(EntryId::new(entry_id))?;
+
+    Ok(())
+}
+
 pub fn update_form(
     project_conn: &mut Connection,
     entry_id: i64,
