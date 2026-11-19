@@ -48,7 +48,6 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       setCurrentProject(proj);
       await refreshRecentProjects();
     } catch (err) {
-      setError(String(err));
       throw err;
     } finally {
       setIsLoading(false);

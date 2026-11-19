@@ -36,7 +36,10 @@ export default function OpenProjectDialog({
       await openProject(path);
       closeDialog();
     } catch (err) {
-      setError(String(err));
+      console.error("Failed to open project:", err);
+      setError(
+        "Could not open this project. Check that the selected folder exists and contains valid Conlangia project files."
+      );
     } finally {
       setBusy(false);
     }

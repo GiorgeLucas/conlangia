@@ -79,22 +79,27 @@ pub fn open_project(
 
 pub fn list_projects(app_db: &mut Connection) -> Result<Vec<ProjectDto>, ProjectServiceError> {
     let mut store = infrastructure::database::app::ProjectsListStore::new(app_db);
+    let rows = store.list_all()?;
+    let mut projects = Vec::with_capacity(rows.len());
 
-    let projects = store
-        .list_all()?
-        .into_iter()
-        .map(|project_row| -> Result<ProjectDto, InfrastructureError> {
-            let project_dir = Path::new(&project_row.path);
-            let metadata_path = project_dir.join("metadata.json");
+    for row in rows {
+        let project_dir = Path::new(&row.path);
+        let metadata_path = project_dir.join("metadata.json");
 
-            let metadata = infrastructure::projects::open_project_metadata_file(&metadata_path)?;
-
-            Ok(ProjectDto {
+        match infrastructure::projects::open_project_metadata_file(&metadata_path) {
+            Ok(metadata) => projects.push(ProjectDto {
                 metadata: Some(metadata),
                 project_dir: project_dir.to_string_lossy().to_string(),
-            })
-        })
-        .collect::<Result<Vec<_>, InfrastructureError>>()?;
+            }),
+            Err(error) => {
+                eprintln!(
+                    "Removing unavailable project from recent list at {}: {error}",
+                    row.path
+                );
+                store.remove(i64::from(row.id))?;
+            }
+        }
+    }
 
     Ok(projects)
 }
@@ -210,6 +215,26 @@ mod tests {
 
             assert!(result.is_err());
         }
+
+        #[test]
+        fn opening_project_at_new_location_removes_old_recent_path() {
+            let temp_dir = tempfile::tempdir().unwrap();
+            let mut app_db = app_db_connection();
+
+            let (dto, connection) =
+                create_project("moved project", None, temp_dir.path(), &mut app_db).unwrap();
+            let old_path = Path::new(&dto.project_dir).to_path_buf();
+            let new_path = temp_dir.path().join("relocated project");
+            drop(connection);
+            std::fs::rename(&old_path, &new_path).unwrap();
+
+            let (_, connection) = open_project(&new_path, &mut app_db).unwrap();
+            drop(connection);
+
+            let projects = list_projects(&mut app_db).unwrap();
+            assert_eq!(projects.len(), 1);
+            assert_eq!(projects[0].project_dir, new_path.to_string_lossy());
+        }
     }
 
     mod list_projects {
@@ -265,6 +290,38 @@ mod tests {
             let projects = result.unwrap();
 
             assert_eq!(projects.len(), 0);
+        }
+
+        #[test]
+        fn removes_unavailable_projects_without_failing_the_list() {
+            let temp_dir = tempfile::tempdir().unwrap();
+            let mut app_db = app_db_connection();
+
+            let (valid_project, connection) =
+                create_project("valid project", None, temp_dir.path(), &mut app_db).unwrap();
+            drop(connection);
+
+            let missing_path = temp_dir.path().join("deleted project");
+            let invalid_metadata_path = temp_dir.path().join("invalid metadata project");
+            std::fs::create_dir(&invalid_metadata_path).unwrap();
+            std::fs::write(invalid_metadata_path.join("metadata.json"), "{").unwrap();
+
+            let mut store = infrastructure::database::app::ProjectsListStore::new(&mut app_db);
+            store.add(missing_path.to_string_lossy().as_ref()).unwrap();
+            store
+                .add(invalid_metadata_path.to_string_lossy().as_ref())
+                .unwrap();
+
+            let projects = list_projects(&mut app_db).unwrap();
+
+            assert_eq!(projects.len(), 1);
+            assert_eq!(projects[0].project_dir, valid_project.project_dir);
+
+            let remaining_rows = infrastructure::database::app::ProjectsListStore::new(&mut app_db)
+                .list_all()
+                .unwrap();
+            assert_eq!(remaining_rows.len(), 1);
+            assert_eq!(remaining_rows[0].path, valid_project.project_dir);
         }
     }
 }
