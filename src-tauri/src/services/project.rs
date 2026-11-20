@@ -1,11 +1,11 @@
 use std::path::Path;
 
-use rusqlite::Connection;
+use rusqlite::{params, Connection};
 use thiserror::Error;
 
 use crate::{
     commands::project::ProjectDto,
-    infrastructure::{self, InfrastructureError},
+    infrastructure::{self, database::DatabaseError, InfrastructureError},
     models::project::ProjectMetadata,
 };
 
@@ -18,8 +18,92 @@ pub enum ProjectServiceError {
     ProjectNameIsBlank,
 }
 
+const DEFAULT_CATEGORIES: [(&str, &str); 14] = [
+    ("Noun", "Names a person, place, thing, or idea."),
+    ("Verb", "Expresses an action, event, or state."),
+    ("Adjective", "Describes or modifies a noun or pronoun."),
+    (
+        "Adverb",
+        "Modifies a verb, adjective, another adverb, or a clause.",
+    ),
+    (
+        "Pronoun",
+        "Stands in for a noun phrase or refers to its participants.",
+    ),
+    (
+        "Preposition",
+        "Relates a noun phrase to another element and precedes it.",
+    ),
+    (
+        "Postposition",
+        "Relates a noun phrase to another element and follows it.",
+    ),
+    ("Conjunction", "Connects words, phrases, or clauses."),
+    (
+        "Interjection",
+        "Expresses an exclamation or standalone reaction.",
+    ),
+    ("Particle", "Adds grammatical or pragmatic meaning."),
+    (
+        "Determiner",
+        "Specifies, identifies, or quantifies a noun phrase.",
+    ),
+    (
+        "Adposition",
+        "Relates a noun phrase to another element, occurring before or after it.",
+    ),
+    ("Numeral", "Expresses number, quantity, or order."),
+    (
+        "Demonstrative",
+        "Identifies a referent by distance or discourse context.",
+    ),
+];
+
+const DEFAULT_MORPH_TYPES: [(&str, &str, bool); 6] = [
+    ("stem", "Stem", false),
+    ("root", "Root", false),
+    ("bound-root", "Bound Root", true),
+    ("prefix", "Prefix", true),
+    ("suffix", "Suffix", true),
+    ("infix", "Infix", true),
+];
+
 fn is_string_blank(value: &str) -> bool {
     value.trim().is_empty()
+}
+
+fn seed_default_taxonomy(connection: &mut Connection) -> Result<(), ProjectServiceError> {
+    let transaction = connection
+        .transaction()
+        .map_err(DatabaseError::FailedToStartTransaction)
+        .map_err(InfrastructureError::from)?;
+
+    for (name, description) in DEFAULT_CATEGORIES {
+        transaction
+            .execute(
+                "INSERT INTO categories (name, description) VALUES (?1, ?2)",
+                params![name, description],
+            )
+            .map_err(DatabaseError::FailedToInsertData)
+            .map_err(InfrastructureError::from)?;
+    }
+
+    for (code, label, is_bound) in DEFAULT_MORPH_TYPES {
+        transaction
+            .execute(
+                "INSERT INTO morph_types (code, label, is_bound) VALUES (?1, ?2, ?3)",
+                params![code, label, is_bound],
+            )
+            .map_err(DatabaseError::FailedToInsertData)
+            .map_err(InfrastructureError::from)?;
+    }
+
+    transaction
+        .commit()
+        .map_err(DatabaseError::FailedToCommitTransaction)
+        .map_err(InfrastructureError::from)?;
+
+    Ok(())
 }
 
 pub fn create_project(
@@ -38,7 +122,8 @@ pub fn create_project(
 
     infrastructure::projects::create_project_metadata_file(&project_dir, &metadata)?;
 
-    let connection = infrastructure::projects::open_project_database(&project_dir)?;
+    let mut connection = infrastructure::projects::open_project_database(&project_dir)?;
+    seed_default_taxonomy(&mut connection)?;
 
     let project_dto = ProjectDto {
         metadata: Some(metadata),
@@ -159,6 +244,7 @@ pub fn list_projects(app_db: &mut Connection) -> Result<Vec<ProjectDto>, Project
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::services::{category, morph_type};
 
     fn app_db_connection() -> Connection {
         let mut conn = Connection::open_in_memory().unwrap();
@@ -188,6 +274,48 @@ mod tests {
 
             assert_eq!(metadata.name, name);
             assert_eq!(metadata.description.as_deref(), description);
+
+            let mut connection =
+                infrastructure::projects::open_project_database(project_dir).unwrap();
+            let categories = category::list_categories(&mut connection).unwrap();
+            assert_eq!(categories.len(), DEFAULT_CATEGORIES.len());
+            for (name, description) in DEFAULT_CATEGORIES {
+                let category = categories
+                    .iter()
+                    .find(|category| category.name().as_str() == name)
+                    .unwrap();
+                assert_eq!(category.description().as_deref(), Some(description));
+            }
+
+            let morph_types = morph_type::list_morph_types(&mut connection).unwrap();
+            assert_eq!(morph_types.len(), DEFAULT_MORPH_TYPES.len());
+            for (code, label, is_bound) in DEFAULT_MORPH_TYPES {
+                let morph_type = morph_types
+                    .iter()
+                    .find(|morph_type| morph_type.code().as_str() == code)
+                    .unwrap();
+                assert_eq!(morph_type.label().as_str(), label);
+                assert_eq!(morph_type.is_bound(), is_bound);
+                assert!(code
+                    .chars()
+                    .all(|character| character.is_ascii_lowercase() || character == '-'));
+            }
+        }
+
+        #[test]
+        fn taxonomy_seed_rolls_back_when_an_insert_fails() {
+            let mut connection = Connection::open_in_memory().unwrap();
+            infrastructure::database::projects::run_migrations(&mut connection).unwrap();
+            morph_type::create_morph_type(&mut connection, "stem", "Existing Stem", false).unwrap();
+
+            assert!(seed_default_taxonomy(&mut connection).is_err());
+            assert!(category::list_categories(&mut connection)
+                .unwrap()
+                .is_empty());
+
+            let morph_types = morph_type::list_morph_types(&mut connection).unwrap();
+            assert_eq!(morph_types.len(), 1);
+            assert_eq!(morph_types[0].label().as_str(), "Existing Stem");
         }
 
         #[test]
@@ -234,6 +362,32 @@ mod tests {
 
     mod open_project {
         use super::*;
+
+        #[test]
+        fn opening_existing_project_does_not_seed_taxonomy() {
+            let temp_dir = tempfile::tempdir().unwrap();
+            let mut app_db = app_db_connection();
+            let project_dir =
+                infrastructure::projects::create_project_dir(temp_dir.path(), "existing").unwrap();
+            let metadata = ProjectMetadata::new(String::from("existing"), None);
+            infrastructure::projects::create_project_metadata_file(&project_dir, &metadata)
+                .unwrap();
+
+            let mut connection =
+                infrastructure::projects::open_project_database(&project_dir).unwrap();
+            category::create_category(&mut connection, "Custom", Some("Existing category"))
+                .unwrap();
+            drop(connection);
+
+            let (_, mut connection) = open_project(&project_dir, &mut app_db).unwrap();
+
+            let categories = category::list_categories(&mut connection).unwrap();
+            assert_eq!(categories.len(), 1);
+            assert_eq!(categories[0].name().as_str(), "Custom");
+            assert!(morph_type::list_morph_types(&mut connection)
+                .unwrap()
+                .is_empty());
+        }
 
         #[test]
         fn with_valid_path() {
