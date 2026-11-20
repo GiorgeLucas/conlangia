@@ -76,9 +76,7 @@ impl<'a> CategoryRepository<'a> {
         let name = category.name().as_str();
         let description = category.description().as_deref();
 
-        let category_id: CategoryId;
-
-        match category.id() {
+        let category_id: CategoryId = match category.id() {
             Some(id) => {
                 self.connection
                     .execute(
@@ -86,7 +84,7 @@ impl<'a> CategoryRepository<'a> {
                         params![name, description, id.get()],
                     )
                     .map_err(DatabaseError::FailedToUpdateData)?;
-                category_id = id;
+                id
             }
             None => {
                 self.connection
@@ -96,9 +94,9 @@ impl<'a> CategoryRepository<'a> {
                     )
                     .map_err(DatabaseError::FailedToInsertData)?;
 
-                category_id = CategoryId::new(self.connection.last_insert_rowid());
+                CategoryId::new(self.connection.last_insert_rowid())
             }
-        }
+        };
 
         let category = self
             .find_by_id(category_id)?

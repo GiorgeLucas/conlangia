@@ -98,17 +98,14 @@ mod tests {
     #[test]
     fn rejects_blank_name() {
         assert_eq!(
-            CategoryName::new("   ".to_string()).unwrap_err(),
+            CategoryName::new("   ").unwrap_err(),
             CategoryError::NameIsEmpty
         );
     }
 
     #[test]
     fn trims_name() {
-        assert_eq!(
-            CategoryName::new("  casa ".to_string()).unwrap().as_str(),
-            "casa"
-        );
+        assert_eq!(CategoryName::new("  casa ").unwrap().as_str(), "casa");
     }
 
     #[test]

@@ -157,6 +157,8 @@ pub fn open_project(
 
     if check.is_none() {
         app_store.add(project_dir.to_string_lossy().as_ref())?;
+    } else {
+        app_store.mark_opened(project_dir.to_string_lossy().as_ref())?;
     }
 
     Ok((project_dto, connection))
@@ -411,6 +413,36 @@ mod tests {
         }
 
         #[test]
+        fn opening_project_updates_its_last_opened_at() {
+            let temp_dir = tempfile::tempdir().unwrap();
+            let mut app_db = app_db_connection();
+            let (project, connection) =
+                create_project("recent project", None, temp_dir.path(), &mut app_db).unwrap();
+            drop(connection);
+
+            let old_timestamp = "2000-01-01T00:00:00.000000000Z";
+            let store = infrastructure::database::app::ProjectsListStore::new(&mut app_db);
+            store
+                .connection
+                .execute(
+                    "UPDATE projects_list SET last_opened_at = ?1 WHERE path = ?2",
+                    params![old_timestamp, project.project_dir],
+                )
+                .unwrap();
+
+            open_project(Path::new(&project.project_dir), &mut app_db).unwrap();
+
+            let updated_timestamp =
+                infrastructure::database::app::ProjectsListStore::new(&mut app_db)
+                    .get_by_path(&project.project_dir)
+                    .unwrap()
+                    .unwrap()
+                    .last_opened_at
+                    .unwrap();
+            assert!(updated_timestamp.as_str() > old_timestamp);
+        }
+
+        #[test]
         fn with_non_existent_project_dir_returns_error() {
             let temp_dir = tempfile::tempdir().unwrap();
             let mut app_db = app_db_connection();
@@ -534,7 +566,7 @@ mod tests {
     mod list_projects {
         use super::*;
 
-        struct list_project {
+        struct ListProject {
             pub name: String,
             pub description: Option<String>,
         }
@@ -545,11 +577,11 @@ mod tests {
             let mut app_db = app_db_connection();
 
             let projects_data = vec![
-                list_project {
+                ListProject {
                     name: String::from("project 1"),
                     description: Some(String::from("project description")),
                 },
-                list_project {
+                ListProject {
                     name: String::from("project 2"),
                     description: None,
                 },
