@@ -1,6 +1,6 @@
-import { Dispatch, FormEvent, SetStateAction } from "react";
+import { Dispatch, FormEvent, SetStateAction, useState } from "react";
 import { PronunciationDto } from "@/api/entries";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, GripVertical, Loader2 } from "lucide-react";
 import Button from "@/ui/Button";
 import SortableItem from "@/ui/SortableItem";
 
@@ -23,7 +23,7 @@ interface PronunciationsSectionProps {
     pronunciationId: number,
     value: string
   ) => Promise<boolean>;
-  onRemovePronunciation: (pronunciationId: number) => void;
+  onRemovePronunciation: (pronunciationId: number) => Promise<boolean>;
 }
 
 export default function PronunciationsSection({
@@ -44,6 +44,18 @@ export default function PronunciationsSection({
   onSavePronDescription,
   onRemovePronunciation,
 }: PronunciationsSectionProps) {
+  const [removingId, setRemovingId] = useState<number | null>(null);
+
+  const handleRemovePronunciation = async (pronunciationId: number) => {
+    setRemovingId(pronunciationId);
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      await new Promise((resolve) => window.setTimeout(resolve, 150));
+    }
+    if (!(await onRemovePronunciation(pronunciationId))) {
+      setRemovingId(null);
+    }
+  };
+
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
@@ -53,7 +65,7 @@ export default function PronunciationsSection({
         <button
           type="button"
           onClick={() => setShowAddPron((prev) => !prev)}
-          className="flex items-center gap-1 text-sm font-semibold text-violet-600 hover:text-violet-700 transition hover:cursor-pointer dark:text-violet-400"
+          className="flex items-center gap-1 text-sm font-semibold text-violet-600 transition-transform transition-colors hover:text-violet-700 active:scale-95 hover:cursor-pointer dark:text-violet-400"
         >
           <Plus size={15} />
           <span>Add</span>
@@ -78,8 +90,10 @@ export default function PronunciationsSection({
                 id={`pronunciation-${pronunciation.id}`}
                 group={`pronunciations-${entryId}`}
                 index={index}
-                disabled={isReordering}
-                className="group relative rounded-xl border border-zinc-200/90 bg-white p-3.5 shadow-2xs transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-zinc-700"
+                disabled={isReordering || removingId === pronunciation.id}
+                className={`entry-detail-card group relative rounded-xl border border-zinc-200/90 bg-white p-3.5 shadow-2xs transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-zinc-700 ${
+                  removingId === pronunciation.id ? "entry-detail-card-exit" : ""
+                }`}
               >
                 {(handleRef) => (
                   <>
@@ -100,7 +114,7 @@ export default function PronunciationsSection({
                           />
                         </button>
                         {isEditingValue ? (
-                          <div className="flex-1 max-w-xs">
+                          <div className="flex h-6 max-w-xs flex-1 items-center">
                             <input
                               key={`${pronunciation.id}-${pronunciation.value}`}
                               type="text"
@@ -127,7 +141,7 @@ export default function PronunciationsSection({
                                 }
                               }}
                               autoFocus
-                              className="h-7 w-full bg-transparent p-0 font-bold text-base text-zinc-950 outline-none focus:text-violet-700 dark:text-zinc-50 dark:focus:text-violet-300 select-text"
+                              className="h-6 w-full bg-transparent p-0 font-bold text-base leading-6 text-zinc-950 outline-none focus:text-violet-700 dark:text-zinc-50 dark:focus:text-violet-300 select-text"
                             />
                           </div>
                         ) : (
@@ -136,7 +150,7 @@ export default function PronunciationsSection({
                               setEditingField(`pron-val-${pronunciation.id}`);
                             }}
                             title="Click to edit pronunciation"
-                            className="font-bold text-base text-zinc-950 hover:cursor-pointer hover:text-violet-700 transition dark:text-zinc-100 dark:hover:text-violet-300"
+                            className="font-bold text-base leading-6 text-zinc-950 hover:cursor-pointer hover:text-violet-700 transition dark:text-zinc-100 dark:hover:text-violet-300"
                           >
                             /{pronunciation.value}/
                           </span>
@@ -145,7 +159,7 @@ export default function PronunciationsSection({
 
                       <button
                         type="button"
-                        onClick={() => onRemovePronunciation(pronunciation.id)}
+                        onClick={() => handleRemovePronunciation(pronunciation.id)}
                         title="Remove pronunciation"
                         className="rounded p-1 text-zinc-300 opacity-0 transition group-hover:opacity-100 hover:text-red-500 hover:cursor-pointer dark:text-zinc-600"
                       >
@@ -157,7 +171,7 @@ export default function PronunciationsSection({
 
                     <div className="ml-6">
                       {isEditingDescription ? (
-                        <div>
+                        <div className="h-5">
                           <input
                             key={`${pronunciation.id}-${pronunciation.description ?? ""}`}
                             type="text"
@@ -187,7 +201,7 @@ export default function PronunciationsSection({
                             }}
                             autoFocus
                             placeholder="Description..."
-                            className="h-7 w-full max-w-sm bg-transparent p-0 text-sm text-zinc-600 outline-none focus:text-violet-700 dark:text-zinc-300 dark:focus:text-violet-300 select-text"
+                            className="h-5 w-full max-w-sm bg-transparent p-0 text-sm leading-5 text-zinc-600 outline-none focus:text-violet-700 dark:text-zinc-300 dark:focus:text-violet-300 select-text"
                           />
                         </div>
                       ) : (
@@ -196,7 +210,7 @@ export default function PronunciationsSection({
                             setEditingField(`pron-desc-${pronunciation.id}`);
                           }}
                           title="Click to edit description"
-                          className="text-sm text-zinc-600 hover:cursor-pointer hover:text-zinc-950 transition dark:text-zinc-400 dark:hover:text-zinc-200"
+                          className="h-5 text-sm leading-5 text-zinc-600 hover:cursor-pointer hover:text-zinc-950 transition dark:text-zinc-400 dark:hover:text-zinc-200"
                         >
                           {pronunciation.description || (
                             <span className="italic text-zinc-300 dark:text-zinc-600">
@@ -217,7 +231,7 @@ export default function PronunciationsSection({
       {showAddPron && (
         <form
           onSubmit={onAddPronunciation}
-          className="rounded-xl border border-dashed border-violet-300 bg-violet-50/20 p-3.5 space-y-2.5 dark:border-violet-900/50 dark:bg-violet-950/10"
+          className="entry-detail-form rounded-xl border border-dashed border-violet-300 bg-violet-50/20 p-3.5 space-y-2.5 dark:border-violet-900/50 dark:bg-violet-950/10"
         >
           <div className="flex flex-col gap-2">
             <input
@@ -242,7 +256,7 @@ export default function PronunciationsSection({
               type="button"
               variant="ghost"
               onClick={() => setShowAddPron(false)}
-              className="!h-7 !px-2.5 !text-xs"
+              className="!h-7 !px-2.5 !text-xs transition-transform active:scale-95"
             >
               Cancel
             </Button>
@@ -250,10 +264,14 @@ export default function PronunciationsSection({
               type="submit"
               variant="primary"
               disabled={addingPron || !newPronValue.trim()}
-              className="!h-7 !px-3 !text-xs !gap-1"
+              className="!h-7 !px-3 !text-xs !gap-1 transition-transform active:scale-95"
             >
-              <Plus size={13} />
-              Save
+              {addingPron ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <Plus size={13} />
+              )}
+              {addingPron ? "Saving..." : "Save"}
             </Button>
           </div>
         </form>

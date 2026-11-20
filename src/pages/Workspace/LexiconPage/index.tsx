@@ -1,9 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import {
+  BulkCreateEntriesResult,
   EntryDto,
   EntryListRowDto,
-  listEntries,
+  createEntries,
+  createEntry,
+  deleteEntries,
   getEntry,
+  listEntries,
+  updateEntriesMorphType,
 } from "@/api/entries";
 import { CategoryDto, listCategories } from "@/api/categories";
 import { MorphTypeDto, listMorphTypes } from "@/api/morphTypes";
@@ -72,36 +77,62 @@ export default function LexiconPage() {
     setSelectedEntry(updated);
     setEntries((prev) =>
       prev.map((row) =>
-        row.id === updated.id
-          ? {
-              ...row,
-              entryForm: updated.entryForm,
-              primaryPronunciation:
-                updated.pronunciations.length > 0
-                  ? updated.pronunciations[0].value
-                  : null,
-              translations: updated.senses.map((s) => s.translation),
-              morphTypeId: updated.morphTypeId,
-            }
-          : row
+        row.id === updated.id ? entryToListRow(updated) : row
       )
     );
   };
 
   const handleEntryCreated = (newEntry: EntryDto) => {
-    const newRow: EntryListRowDto = {
-      id: newEntry.id,
-      entryForm: newEntry.entryForm,
-      primaryPronunciation:
-        newEntry.pronunciations.length > 0
-          ? newEntry.pronunciations[0].value
-          : null,
-      translations: newEntry.senses.map((s) => s.translation),
-      morphTypeId: newEntry.morphTypeId,
-    };
+    const newRow = entryToListRow(newEntry);
     setEntries((prev) => [newRow, ...prev]);
     setSelectedId(newEntry.id);
     setSelectedEntry(newEntry);
+  };
+
+  const handleQuickAdd = async (entryForm: string) => {
+    const entry = await createEntry(entryForm, null);
+    handleEntryCreated(entry);
+  };
+
+  const handleBulkAdd = async (
+    entryForms: string[]
+  ): Promise<BulkCreateEntriesResult> => {
+    const result = await createEntries(entryForms);
+    const newRows = result.createdEntries.map(entryToListRow);
+    setEntries((prev) => [...newRows, ...prev]);
+    return result;
+  };
+
+  const handleBulkMorphTypeChange = async (
+    entryIds: number[],
+    morphTypeId: number | null
+  ): Promise<EntryDto[]> => {
+    const updatedEntries = await updateEntriesMorphType(entryIds, morphTypeId);
+    const updatedById = new Map(
+      updatedEntries.map((entry) => [entry.id, entry])
+    );
+
+    setEntries((prev) =>
+      prev.map((row) => {
+        const updated = updatedById.get(row.id);
+        return updated ? entryToListRow(updated) : row;
+      })
+    );
+    setSelectedEntry((current) =>
+      current ? updatedById.get(current.id) ?? current : current
+    );
+
+    return updatedEntries;
+  };
+
+  const handleBulkDelete = async (entryIds: number[]) => {
+    const deletedIds = await deleteEntries(entryIds);
+    const deletedIdSet = new Set(deletedIds);
+    setEntries((prev) => prev.filter((entry) => !deletedIdSet.has(entry.id)));
+    if (selectedId !== null && deletedIdSet.has(selectedId)) {
+      setSelectedId(null);
+      setSelectedEntry(null);
+    }
   };
 
   const handleEntryDeleted = (id: number) => {
@@ -120,6 +151,10 @@ export default function LexiconPage() {
         selectedId={selectedId}
         onSelect={handleSelectEntry}
         onOpenCreate={() => setIsCreateOpen(true)}
+        onQuickAdd={handleQuickAdd}
+        onBulkAdd={handleBulkAdd}
+        onBulkMorphTypeChange={handleBulkMorphTypeChange}
+        onBulkDelete={handleBulkDelete}
         isLoading={isLoadingEntries}
       />
 
@@ -168,4 +203,17 @@ export default function LexiconPage() {
       />
     </div>
   );
+}
+
+function entryToListRow(newEntry: EntryDto): EntryListRowDto {
+  return {
+    id: newEntry.id,
+    entryForm: newEntry.entryForm,
+    primaryPronunciation:
+      newEntry.pronunciations.length > 0
+        ? newEntry.pronunciations[0].value
+        : null,
+    translations: newEntry.senses.map((s) => s.translation),
+    morphTypeId: newEntry.morphTypeId,
+  };
 }

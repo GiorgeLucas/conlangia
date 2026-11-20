@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { DragDropProvider, type DragEndEvent } from "@dnd-kit/react";
 import { isSortableOperation } from "@dnd-kit/react/sortable";
 import {
@@ -61,6 +61,8 @@ export default function EntryDetail({
   const [isChangingMorph, setIsChangingMorph] = useState(false);
   const [isReordering, setIsReordering] = useState(false);
   const [reorderError, setReorderError] = useState<string | null>(null);
+  const [isHeaderScrolled, setIsHeaderScrolled] = useState(false);
+  const headerSentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setConfirmDelete(false);
@@ -71,6 +73,18 @@ export default function EntryDetail({
     setIsChangingMorph(false);
     setReorderError(null);
   }, [entry.id, entry.entryForm]);
+
+  useEffect(() => {
+    const sentinel = headerSentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      ([entryObserver]) => setIsHeaderScrolled(!entryObserver.isIntersecting),
+      { threshold: 0 }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, []);
 
   const morphOptions: SelectOption[] = useMemo(() => {
     return [
@@ -201,12 +215,14 @@ export default function EntryDetail({
     }
   };
 
-  const handleRemovePron = async (pronId: number) => {
+  const handleRemovePron = async (pronId: number): Promise<boolean> => {
     try {
       const updated = await removeEntryPronunciation(entry.id, pronId);
       onEntryUpdated(updated);
+      return true;
     } catch (err) {
       console.error("Failed to remove pronunciation:", err);
+      return false;
     }
   };
 
@@ -293,12 +309,14 @@ export default function EntryDetail({
     }
   };
 
-  const handleRemoveSense = async (senseId: number) => {
+  const handleRemoveSense = async (senseId: number): Promise<boolean> => {
     try {
       const updated = await removeEntrySense(entry.id, senseId);
       onEntryUpdated(updated);
+      return true;
     } catch (err) {
       console.error("Failed to remove sense:", err);
+      return false;
     }
   };
 
@@ -365,8 +383,19 @@ export default function EntryDetail({
 
   return (
     <DragDropProvider onDragEnd={handleDragEnd}>
-      <div className="w-full px-6 py-6 font-sans select-none">
-        <div className="sticky top-0 z-20 -mx-6 -mt-6 bg-white px-6 pt-6 dark:bg-zinc-950">
+      <div className="relative w-full px-6 py-6 font-sans select-none">
+        <div
+          ref={headerSentinelRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute top-0 h-px w-px"
+        />
+        <div
+          className={`sticky top-0 z-20 -mx-6 -mt-6 bg-white px-6 pt-6 transition-[box-shadow] duration-200 dark:bg-zinc-950 ${
+            isHeaderScrolled
+              ? "shadow-[0_8px_14px_-14px_rgba(24,24,27,0.65)] dark:shadow-[0_8px_14px_-14px_rgba(0,0,0,0.9)]"
+              : ""
+          }`}
+        >
           <EntryDetailHeader
             entry={entry}
             primaryPronunciation={primaryPronunciation}
@@ -382,57 +411,59 @@ export default function EntryDetail({
             onDelete={handleDeleteEntry}
           />
         </div>
-        {reorderError && (
-          <p
-            role="alert"
-            className="mb-3 text-sm text-red-600 dark:text-red-400"
-          >
-            {reorderError}
-          </p>
-        )}
-        <PronunciationsSection
-          entryId={entry.id}
-          pronunciations={entry.pronunciations}
-          isReordering={isReordering}
-          showAddPron={showAddPron}
-          setShowAddPron={setShowAddPron}
-          newPronValue={newPronValue}
-          setNewPronValue={setNewPronValue}
-          newPronDesc={newPronDesc}
-          setNewPronDesc={setNewPronDesc}
-          addingPron={addingPron}
-          onAddPronunciation={handleAddPronunciation}
-          editingField={editingField}
-          setEditingField={setEditingField}
-          onSavePronValue={handleSavePronValue}
-          onSavePronDescription={handleSavePronDesc}
-          onRemovePronunciation={handleRemovePron}
-        />
-        <SensesSection
-          entryId={entry.id}
-          senses={entry.senses}
-          isReordering={isReordering}
-          categories={categories}
-          categoryOptions={categoryOptions}
-          showAddSense={showAddSense}
-          setShowAddSense={setShowAddSense}
-          newSenseTrans={newSenseTrans}
-          setNewSenseTrans={setNewSenseTrans}
-          newSenseDef={newSenseDef}
-          setNewSenseDef={setNewSenseDef}
-          newSenseCatId={newSenseCatId}
-          setNewSenseCatId={setNewSenseCatId}
-          addingSense={addingSense}
-          onAddSense={handleAddSense}
-          editingField={editingField}
-          setEditingField={setEditingField}
-          editingSenseCatId={editingSenseCatId}
-          setEditingSenseCatId={setEditingSenseCatId}
-          onSaveSenseTranslation={handleSaveSenseTranslation}
-          onSaveSenseDefinition={handleSaveSenseDefinition}
-          onChangeSenseCategory={handleSenseCategoryChange}
-          onRemoveSense={handleRemoveSense}
-        />
+        <div key={entry.id} className="entry-detail-content">
+          {reorderError && (
+            <p
+              role="alert"
+              className="mb-3 text-sm text-red-600 dark:text-red-400"
+            >
+              {reorderError}
+            </p>
+          )}
+          <PronunciationsSection
+            entryId={entry.id}
+            pronunciations={entry.pronunciations}
+            isReordering={isReordering}
+            showAddPron={showAddPron}
+            setShowAddPron={setShowAddPron}
+            newPronValue={newPronValue}
+            setNewPronValue={setNewPronValue}
+            newPronDesc={newPronDesc}
+            setNewPronDesc={setNewPronDesc}
+            addingPron={addingPron}
+            onAddPronunciation={handleAddPronunciation}
+            editingField={editingField}
+            setEditingField={setEditingField}
+            onSavePronValue={handleSavePronValue}
+            onSavePronDescription={handleSavePronDesc}
+            onRemovePronunciation={handleRemovePron}
+          />
+          <SensesSection
+            entryId={entry.id}
+            senses={entry.senses}
+            isReordering={isReordering}
+            categories={categories}
+            categoryOptions={categoryOptions}
+            showAddSense={showAddSense}
+            setShowAddSense={setShowAddSense}
+            newSenseTrans={newSenseTrans}
+            setNewSenseTrans={setNewSenseTrans}
+            newSenseDef={newSenseDef}
+            setNewSenseDef={setNewSenseDef}
+            newSenseCatId={newSenseCatId}
+            setNewSenseCatId={setNewSenseCatId}
+            addingSense={addingSense}
+            onAddSense={handleAddSense}
+            editingField={editingField}
+            setEditingField={setEditingField}
+            editingSenseCatId={editingSenseCatId}
+            setEditingSenseCatId={setEditingSenseCatId}
+            onSaveSenseTranslation={handleSaveSenseTranslation}
+            onSaveSenseDefinition={handleSaveSenseDefinition}
+            onChangeSenseCategory={handleSenseCategoryChange}
+            onRemoveSense={handleRemoveSense}
+          />
+        </div>
       </div>
     </DragDropProvider>
   );

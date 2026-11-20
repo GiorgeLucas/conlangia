@@ -1,4 +1,5 @@
 use rusqlite::{params, Connection, OptionalExtension, Transaction};
+use std::collections::HashSet;
 
 use crate::{
     infrastructure::database::DatabaseError,
@@ -366,6 +367,131 @@ impl<'a> EntryRepository<'a> {
             .map_err(DatabaseError::FailedToCommitTransaction)?;
 
         self.find_by_id(entry_id)?.ok_or(DatabaseError::NotFound)
+    }
+
+    pub fn create_many(
+        &mut self,
+        entry_forms: &[EntryForm],
+    ) -> Result<(Vec<Entry>, usize), DatabaseError> {
+        let tx = self
+            .connection
+            .transaction()
+            .map_err(DatabaseError::FailedToStartTransaction)?;
+
+        let mut existing_forms = {
+            let mut statement = tx
+                .prepare("SELECT entry_form FROM entries")
+                .map_err(DatabaseError::FailedToQueryData)?;
+            let rows = statement
+                .query_map([], |row| row.get::<_, String>(0))
+                .map_err(DatabaseError::FailedToQueryData)?
+                .collect::<rusqlite::Result<Vec<_>>>()
+                .map_err(DatabaseError::FailedToQueryData)?;
+            rows.into_iter()
+                .map(|form| form.to_lowercase())
+                .collect::<HashSet<_>>()
+        };
+        let mut created_ids = Vec::new();
+        let mut skipped_count = 0;
+
+        for entry_form in entry_forms {
+            let normalized_form = entry_form.as_str().to_lowercase();
+            if !existing_forms.insert(normalized_form) {
+                skipped_count += 1;
+                continue;
+            }
+
+            tx.execute(
+                "INSERT INTO entries (entry_form, morph_type_id) VALUES (?1, NULL)",
+                [entry_form.as_str()],
+            )
+            .map_err(DatabaseError::FailedToInsertData)?;
+            created_ids.push(EntryId::new(tx.last_insert_rowid()));
+        }
+
+        tx.commit()
+            .map_err(DatabaseError::FailedToCommitTransaction)?;
+
+        let created = created_ids
+            .into_iter()
+            .map(|id| self.find_by_id(id)?.ok_or(DatabaseError::NotFound))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok((created, skipped_count))
+    }
+
+    pub fn update_morph_type_for_many(
+        &mut self,
+        entry_ids: &[EntryId],
+        morph_type_id: Option<MorphTypeId>,
+    ) -> Result<Vec<Entry>, DatabaseError> {
+        let mut unique_ids = Vec::with_capacity(entry_ids.len());
+        let mut seen_ids = HashSet::with_capacity(entry_ids.len());
+        for id in entry_ids {
+            if seen_ids.insert(id.get()) {
+                unique_ids.push(*id);
+            }
+        }
+
+        if unique_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let tx = self
+            .connection
+            .transaction()
+            .map_err(DatabaseError::FailedToStartTransaction)?;
+        for id in &unique_ids {
+            let changed = tx
+                .execute(
+                    "UPDATE entries SET morph_type_id = ?1 WHERE id = ?2",
+                    params![morph_type_id.map(MorphTypeId::get), id.get()],
+                )
+                .map_err(DatabaseError::FailedToUpdateData)?;
+            if changed == 0 {
+                return Err(DatabaseError::NotFound);
+            }
+        }
+
+        tx.commit()
+            .map_err(DatabaseError::FailedToCommitTransaction)?;
+
+        unique_ids
+            .into_iter()
+            .map(|id| self.find_by_id(id)?.ok_or(DatabaseError::NotFound))
+            .collect()
+    }
+
+    pub fn delete_many(&mut self, entry_ids: &[EntryId]) -> Result<Vec<i64>, DatabaseError> {
+        let mut unique_ids = Vec::with_capacity(entry_ids.len());
+        let mut seen_ids = HashSet::with_capacity(entry_ids.len());
+        for id in entry_ids {
+            if seen_ids.insert(id.get()) {
+                unique_ids.push(*id);
+            }
+        }
+
+        if unique_ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let tx = self
+            .connection
+            .transaction()
+            .map_err(DatabaseError::FailedToStartTransaction)?;
+        for id in &unique_ids {
+            let changed = tx
+                .execute("DELETE FROM entries WHERE id = ?1", [id.get()])
+                .map_err(DatabaseError::FailedToDeleteData)?;
+            if changed == 0 {
+                return Err(DatabaseError::NotFound);
+            }
+        }
+
+        tx.commit()
+            .map_err(DatabaseError::FailedToCommitTransaction)?;
+
+        Ok(unique_ids.into_iter().map(EntryId::get).collect())
     }
 
     pub fn delete(&mut self, id: EntryId) -> Result<(), DatabaseError> {

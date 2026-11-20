@@ -78,6 +78,13 @@ pub struct EntryListDto {
     pub rows: Vec<EntryListRowDto>,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkCreateEntriesDto {
+    pub created_entries: Vec<EntryDto>,
+    pub skipped_count: usize,
+}
+
 impl EntryDto {
     fn from_saved(entry: &Entry) -> Self {
         Self {
@@ -124,6 +131,26 @@ pub fn create_entry(
 }
 
 #[tauri::command]
+pub fn create_entries(
+    state: State<AppState>,
+    entry_forms: Vec<String>,
+) -> Result<BulkCreateEntriesDto, EntryCommandError> {
+    let mut guard = state::lock_state_current_project(&state)?;
+    let project = guard.as_mut().ok_or(StateError::ProjectIsNotLoaded)?;
+
+    let result = services::entry::create_entries(&mut project.connection, &entry_forms)?;
+
+    Ok(BulkCreateEntriesDto {
+        created_entries: result
+            .created_entries
+            .iter()
+            .map(EntryDto::from_saved)
+            .collect(),
+        skipped_count: result.skipped_count,
+    })
+}
+
+#[tauri::command]
 pub fn list_entries(state: State<AppState>) -> Result<EntryListDto, EntryCommandError> {
     let mut guard = state::lock_state_current_project(&state)?;
     let project = guard.as_mut().ok_or(StateError::ProjectIsNotLoaded)?;
@@ -165,16 +192,27 @@ pub fn get_entry(
 }
 
 #[tauri::command]
-pub fn delete_entry(
-    state: State<AppState>,
-    entry_id: i64,
-) -> Result<(), EntryCommandError> {
+pub fn delete_entry(state: State<AppState>, entry_id: i64) -> Result<(), EntryCommandError> {
     let mut guard = state::lock_state_current_project(&state)?;
     let project = guard.as_mut().ok_or(StateError::ProjectIsNotLoaded)?;
 
     services::entry::delete_entry(&mut project.connection, entry_id)?;
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn delete_entries(
+    state: State<AppState>,
+    entry_ids: Vec<i64>,
+) -> Result<Vec<i64>, EntryCommandError> {
+    let mut guard = state::lock_state_current_project(&state)?;
+    let project = guard.as_mut().ok_or(StateError::ProjectIsNotLoaded)?;
+
+    Ok(services::entry::delete_entries(
+        &mut project.connection,
+        &entry_ids,
+    )?)
 }
 
 #[tauri::command]
@@ -204,6 +242,24 @@ pub fn update_entry_morph_type(
         services::entry::update_morph_type(&mut project.connection, entry_id, morph_type_id)?;
 
     Ok(EntryDto::from_saved(&entry))
+}
+
+#[tauri::command]
+pub fn update_entries_morph_type(
+    state: State<AppState>,
+    entry_ids: Vec<i64>,
+    morph_type_id: Option<i64>,
+) -> Result<Vec<EntryDto>, EntryCommandError> {
+    let mut guard = state::lock_state_current_project(&state)?;
+    let project = guard.as_mut().ok_or(StateError::ProjectIsNotLoaded)?;
+
+    let entries = services::entry::update_morph_type_for_many(
+        &mut project.connection,
+        &entry_ids,
+        morph_type_id,
+    )?;
+
+    Ok(entries.iter().map(EntryDto::from_saved).collect())
 }
 
 #[tauri::command]

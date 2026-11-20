@@ -35,6 +35,11 @@ export interface EntryListDto {
   rows: EntryListRowDto[];
 }
 
+export interface BulkCreateEntriesResult {
+  createdEntries: EntryDto[];
+  skippedCount: number;
+}
+
 export function createEntry(
   entryForm: string,
   morphTypeId?: number | null
@@ -43,6 +48,10 @@ export function createEntry(
     entryForm,
     morphTypeId: morphTypeId ?? null,
   });
+}
+
+export function createEntries(entryForms: string[]): Promise<BulkCreateEntriesResult> {
+  return invoke<BulkCreateEntriesResult>("create_entries", { entryForms });
 }
 
 export function listEntries(): Promise<EntryListDto> {
@@ -55,6 +64,10 @@ export function getEntry(entryId: number): Promise<EntryDto | null> {
 
 export function deleteEntry(entryId: number): Promise<void> {
   return invoke<void>("delete_entry", { entryId });
+}
+
+export function deleteEntries(entryIds: number[]): Promise<number[]> {
+  return invoke<number[]>("delete_entries", { entryIds });
 }
 
 export function updateEntryForm(
@@ -73,6 +86,16 @@ export function updateEntryMorphType(
 ): Promise<EntryDto> {
   return invoke<EntryDto>("update_entry_morph_type", {
     entryId,
+    morphTypeId,
+  });
+}
+
+export function updateEntriesMorphType(
+  entryIds: number[],
+  morphTypeId: number | null
+): Promise<EntryDto[]> {
+  return invoke<EntryDto[]>("update_entries_morph_type", {
+    entryIds,
     morphTypeId,
   });
 }

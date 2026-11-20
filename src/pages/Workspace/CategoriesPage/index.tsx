@@ -14,6 +14,8 @@ import CategoryFormDialog from "./components/dialog/CategoryFormDialog";
 import DeleteCategoryDialog from "./components/dialog/DeleteCategoryDialog";
 import getErrorMessage from "../utils/getErrorMessage";
 import SortableTableHeader from "@/ui/SortableTableHeader";
+import TableSelectionCheckbox from "@/ui/TableSelectionCheckbox";
+import { Modal } from "@/ui/Modal";
 
 type SortColumn = "name" | "description";
 type SortDirection = "asc" | "desc";
@@ -35,6 +37,10 @@ export default function CategoriesPage() {
 
   const [categoryToDelete, setCategoryToDelete] =
     useState<CategoryDto | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   const loadCategories = useCallback(async () => {
     setIsLoading(true);
@@ -51,6 +57,16 @@ export default function CategoriesPage() {
   useEffect(() => {
     void loadCategories();
   }, [loadCategories]);
+
+  useEffect(() => {
+    const availableIds = new Set(categories.map(({ id }) => id));
+    setSelectedIds((current) => {
+      const retained = new Set(
+        [...current].filter((id) => availableIds.has(id))
+      );
+      return retained.size === current.size ? current : retained;
+    });
+  }, [categories]);
 
   const filteredCategories = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -146,8 +162,65 @@ export default function CategoriesPage() {
     if (!open) setCategoryToDelete(null);
   };
 
+  const toggleSelected = (id: number) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setBulkError(null);
+  };
+
+  const visibleIds = filteredCategories.map(({ id }) => id);
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+  const someVisibleSelected =
+    visibleIds.some((id) => selectedIds.has(id)) && !allVisibleSelected;
+
+  const toggleVisibleSelection = () => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allVisibleSelected) visibleIds.forEach((id) => next.delete(id));
+      else visibleIds.forEach((id) => next.add(id));
+      return next;
+    });
+    setBulkError(null);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0 || isBulkDeleting) return;
+    setIsBulkDeleting(true);
+    setBulkError(null);
+    const deletedIds = new Set<number>();
+    const failedIds = new Set<number>();
+    let firstError: unknown;
+
+    for (const id of selectedIds) {
+      try {
+        await deleteCategory(id);
+        deletedIds.add(id);
+      } catch (error) {
+        firstError ??= error;
+        failedIds.add(id);
+      }
+    }
+
+    setCategories((current) =>
+      current.filter((item) => !deletedIds.has(item.id))
+    );
+    setSelectedIds(failedIds);
+    setIsBulkDeleteOpen(false);
+    if (failedIds.size > 0) {
+      setBulkError(
+        `${deletedIds.size} deleted; ${failedIds.size} failed. ${getErrorMessage(firstError)}`
+      );
+    }
+    setIsBulkDeleting(false);
+  };
+
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white dark:bg-zinc-950">
+    <div className="relative flex h-full min-h-0 flex-col bg-white dark:bg-zinc-950">
       <div className="flex flex-col gap-3.5 border-b border-zinc-200/80 p-5 dark:border-zinc-800">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
@@ -194,15 +267,30 @@ export default function CategoriesPage() {
         </div>
       </div>
 
-      <div className="workspace-table-scrollbar min-h-0 flex-1 overflow-auto pr-3">
+      <div
+        className={`workspace-table-scrollbar min-h-0 flex-1 overflow-auto pr-3 ${
+          selectedIds.size > 0 ? "pb-24" : ""
+        }`}
+      >
         <table className="w-full table-fixed border-collapse text-left">
           <colgroup>
+            <col className="w-10" />
             <col className="w-[30%]" />
             <col />
             <col className="w-24" />
           </colgroup>
           <thead className="sticky top-0 z-10 border-b border-zinc-200/80 bg-zinc-50 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900">
-            <tr>
+            <tr className="group">
+              <th className="px-3 py-3">
+                <TableSelectionCheckbox
+                  checked={allVisibleSelected}
+                  indeterminate={someVisibleSelected}
+                  onChange={toggleVisibleSelection}
+                  label="Select all visible categories"
+                  disabled={visibleIds.length === 0 || isBulkDeleting}
+                  visible={selectedIds.size > 0}
+                />
+              </th>
               <SortableTableHeader
                 label="Category"
                 active={sort.column === "name"}
@@ -224,7 +312,7 @@ export default function CategoriesPage() {
             {isLoading ? (
               <tr>
                 <td
-                  colSpan={3}
+                  colSpan={4}
                   className="py-16 text-center text-sm text-zinc-400"
                 >
                   Loading categories…
@@ -232,7 +320,7 @@ export default function CategoriesPage() {
               </tr>
             ) : loadError ? (
               <tr>
-                <td colSpan={3} className="py-16 text-center">
+                <td colSpan={4} className="py-16 text-center">
                   <div className="mx-auto flex max-w-md flex-col items-center gap-3">
                     <AlertCircle size={26} className="text-red-400" />
                     <p className="text-sm text-red-600 dark:text-red-400">
@@ -250,7 +338,7 @@ export default function CategoriesPage() {
               </tr>
             ) : filteredCategories.length === 0 ? (
               <tr>
-                <td colSpan={3} className="py-16 text-center">
+                <td colSpan={4} className="py-16 text-center">
                   <div className="mx-auto flex max-w-xs flex-col items-center gap-3">
                     <Tags size={30} className="text-zinc-300 dark:text-zinc-700" />
                     <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
@@ -275,8 +363,27 @@ export default function CategoriesPage() {
               filteredCategories.map((category) => (
                 <tr
                   key={category.id}
-                  className="group hover:bg-zinc-50/70 dark:hover:bg-zinc-900/50"
+                  onClick={() => {
+                    if (selectedIds.size > 0) toggleSelected(category.id);
+                  }}
+                  className={`group ${
+                    selectedIds.has(category.id)
+                      ? "bg-violet-50/50 dark:bg-violet-950/15"
+                      : "hover:bg-zinc-50/70 dark:hover:bg-zinc-900/50"
+                  } ${selectedIds.size > 0 ? "cursor-pointer" : ""}`}
                 >
+                  <td
+                    className="px-3 py-4"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <TableSelectionCheckbox
+                      checked={selectedIds.has(category.id)}
+                      onChange={() => toggleSelected(category.id)}
+                      label={`Select ${category.name}`}
+                      disabled={isBulkDeleting}
+                      visible={selectedIds.has(category.id)}
+                    />
+                  </td>
                   <td className="px-5 py-4">
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">
                       {category.name}
@@ -293,11 +400,15 @@ export default function CategoriesPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-5 py-4">
+                  <td
+                    className="px-5 py-4"
+                    onClick={(event) => event.stopPropagation()}
+                  >
                     <div className="flex justify-end gap-1">
                       <Button
                         type="button"
                         variant="ghost"
+                        disabled={isBulkDeleting}
                         onClick={() => openEditor(category)}
                         title="Edit category"
                         aria-label={`Edit ${category.name}`}
@@ -308,6 +419,7 @@ export default function CategoriesPage() {
                       <Button
                         type="button"
                         variant="ghost"
+                        disabled={isBulkDeleting}
                         onClick={() => {
                           setCategoryToDelete(category);
                         }}
@@ -337,6 +449,71 @@ export default function CategoriesPage() {
         onOpenChange={handleDeleteOpenChange}
         onDelete={handleDelete}
       />
+      {selectedIds.size > 0 && (
+        <div className="absolute inset-x-4 bottom-4 z-20 rounded-2xl border border-zinc-200/90 bg-white/95 p-3 backdrop-blur-md dark:border-zinc-700 dark:bg-zinc-900/95">
+          {bulkError && (
+            <p role="alert" className="mb-2 text-xs text-red-600 dark:text-red-400">
+              {bulkError}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-auto pl-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+              {selectedIds.size} selected
+            </span>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => setIsBulkDeleteOpen(true)}
+              disabled={isBulkDeleting}
+              className="!h-9 !px-3 !text-xs !gap-1.5"
+            >
+              <Trash2 size={14} />
+              Delete
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setSelectedIds(new Set());
+                setBulkError(null);
+              }}
+              disabled={isBulkDeleting}
+              className="!h-9 !px-2.5 !text-xs"
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
+      )}
+      <Modal
+        open={isBulkDeleteOpen}
+        onOpenChange={(open) => {
+          if (!isBulkDeleting) setIsBulkDeleteOpen(open);
+        }}
+        title={`Delete ${selectedIds.size} ${
+          selectedIds.size === 1 ? "category" : "categories"
+        }?`}
+        description="Senses using these categories will become uncategorized."
+      >
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={isBulkDeleting}
+            onClick={() => setIsBulkDeleteOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="danger"
+            disabled={isBulkDeleting || selectedIds.size === 0}
+            onClick={() => void handleBulkDelete()}
+          >
+            {isBulkDeleting ? "Deleting…" : "Delete categories"}
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

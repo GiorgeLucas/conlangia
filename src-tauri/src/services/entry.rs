@@ -32,6 +32,12 @@ pub enum EntryServiceError {
     Model(#[from] EntryError),
 }
 
+#[derive(Debug)]
+pub struct BulkCreateEntriesResult {
+    pub created_entries: Vec<Entry>,
+    pub skipped_count: usize,
+}
+
 pub fn create_entry(
     project_conn: &mut Connection,
     entry_form: &str,
@@ -51,6 +57,23 @@ pub fn create_entry(
     Ok(repo.save(&new_entry)?)
 }
 
+pub fn create_entries(
+    project_conn: &mut Connection,
+    entry_forms: &[String],
+) -> Result<BulkCreateEntriesResult, EntryServiceError> {
+    let entry_forms = entry_forms
+        .iter()
+        .map(EntryForm::new)
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut repo = EntryRepository::new(project_conn);
+    let (created_entries, skipped_count) = repo.create_many(&entry_forms)?;
+
+    Ok(BulkCreateEntriesResult {
+        created_entries,
+        skipped_count,
+    })
+}
+
 pub fn list_entries(project_conn: &mut Connection) -> Result<Vec<Entry>, EntryServiceError> {
     let repo = EntryRepository::new(project_conn);
 
@@ -66,15 +89,26 @@ pub fn get_entry(
     Ok(repo.find_by_id(EntryId::new(entry_id))?)
 }
 
-pub fn delete_entry(
-    project_conn: &mut Connection,
-    entry_id: i64,
-) -> Result<(), EntryServiceError> {
+pub fn delete_entry(project_conn: &mut Connection, entry_id: i64) -> Result<(), EntryServiceError> {
     let mut repo = EntryRepository::new(project_conn);
 
     repo.delete(EntryId::new(entry_id))?;
 
     Ok(())
+}
+
+pub fn delete_entries(
+    project_conn: &mut Connection,
+    entry_ids: &[i64],
+) -> Result<Vec<i64>, EntryServiceError> {
+    let entry_ids = entry_ids
+        .iter()
+        .copied()
+        .map(EntryId::new)
+        .collect::<Vec<_>>();
+    let mut repo = EntryRepository::new(project_conn);
+
+    Ok(repo.delete_many(&entry_ids)?)
 }
 
 pub fn update_form(
@@ -111,6 +145,22 @@ pub fn update_morph_type(
     entry.set_morph_type_id(morph_type_id);
 
     Ok(repo.save(&entry)?)
+}
+
+pub fn update_morph_type_for_many(
+    project_conn: &mut Connection,
+    entry_ids: &[i64],
+    morph_type_id: Option<i64>,
+) -> Result<Vec<Entry>, EntryServiceError> {
+    let entry_ids = entry_ids
+        .iter()
+        .copied()
+        .map(EntryId::new)
+        .collect::<Vec<_>>();
+    let morph_type_id = morph_type_id.map(MorphTypeId::new);
+    let mut repo = EntryRepository::new(project_conn);
+
+    Ok(repo.update_morph_type_for_many(&entry_ids, morph_type_id)?)
 }
 
 pub fn add_pronunciation(
@@ -381,6 +431,57 @@ mod tests {
     }
 
     #[test]
+    fn create_entries_trims_forms_and_skips_case_insensitive_duplicates() {
+        let mut conn = setup();
+        create_entry(&mut conn, "Casa", None).unwrap();
+
+        let forms = vec![
+            String::from(" casa "),
+            String::from("CASA"),
+            String::from(" Mundo "),
+            String::from("mundo"),
+        ];
+        let result = create_entries(&mut conn, &forms).unwrap();
+
+        assert_eq!(result.skipped_count, 3);
+        assert_eq!(result.created_entries.len(), 1);
+        assert_eq!(result.created_entries[0].form().as_str(), "Mundo");
+        assert_eq!(result.created_entries[0].morph_type_id(), None);
+        assert_eq!(list_entries(&mut conn).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn create_entries_rejects_blank_forms() {
+        let mut conn = setup();
+
+        let err =
+            create_entries(&mut conn, &[String::from("valid"), String::from("  ")]).unwrap_err();
+
+        assert!(matches!(err, EntryServiceError::Model(_)));
+        assert!(list_entries(&mut conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn create_entries_rolls_back_after_insert_failure() {
+        let mut conn = setup();
+        conn.execute_batch(
+            "CREATE TRIGGER reject_bulk_entry BEFORE INSERT ON entries
+             WHEN NEW.entry_form = 'reject'
+             BEGIN SELECT RAISE(ABORT, 'insert rejected'); END;",
+        )
+        .unwrap();
+
+        let err = create_entries(&mut conn, &[String::from("first"), String::from("reject")])
+            .unwrap_err();
+
+        assert!(matches!(
+            err,
+            EntryServiceError::Database(DatabaseError::FailedToInsertData(_))
+        ));
+        assert!(list_entries(&mut conn).unwrap().is_empty());
+    }
+
+    #[test]
     fn update_form_updates_existing_entry() {
         let mut conn = setup();
 
@@ -390,6 +491,102 @@ mod tests {
 
         assert_eq!(updated.form().as_str(), "casa nova");
         assert_eq!(updated.id(), created.id());
+    }
+
+    #[test]
+    fn update_morph_type_for_many_updates_and_clears_all_selected_entries() {
+        let mut conn = setup();
+        let morph_type =
+            crate::services::morph_type::create_morph_type(&mut conn, "root", "Root", false)
+                .unwrap();
+        let first = create_entry(&mut conn, "first", None).unwrap();
+        let second = create_entry(&mut conn, "second", None).unwrap();
+        let entry_ids = vec![
+            first.id().unwrap().get(),
+            second.id().unwrap().get(),
+            first.id().unwrap().get(),
+        ];
+
+        let updated =
+            update_morph_type_for_many(&mut conn, &entry_ids, Some(morph_type.id().unwrap().get()))
+                .unwrap();
+        assert_eq!(updated.len(), 2);
+        assert!(updated
+            .iter()
+            .all(|entry| entry.morph_type_id() == morph_type.id()));
+
+        let updated_again =
+            update_morph_type_for_many(&mut conn, &entry_ids, Some(morph_type.id().unwrap().get()))
+                .unwrap();
+        assert_eq!(updated_again.len(), 2);
+
+        let cleared = update_morph_type_for_many(&mut conn, &entry_ids, None).unwrap();
+        assert_eq!(cleared.len(), 2);
+        assert!(cleared.iter().all(|entry| entry.morph_type_id().is_none()));
+    }
+
+    #[test]
+    fn update_morph_type_for_many_rolls_back_if_an_entry_update_fails() {
+        let mut conn = setup();
+        let morph_type =
+            crate::services::morph_type::create_morph_type(&mut conn, "root", "Root", false)
+                .unwrap();
+        let first = create_entry(&mut conn, "first", None).unwrap();
+        let second = create_entry(&mut conn, "reject", None).unwrap();
+        conn.execute_batch(
+            "CREATE TRIGGER reject_bulk_entry_update BEFORE UPDATE OF morph_type_id ON entries
+             WHEN OLD.entry_form = 'reject'
+             BEGIN SELECT RAISE(ABORT, 'update rejected'); END;",
+        )
+        .unwrap();
+
+        let err = update_morph_type_for_many(
+            &mut conn,
+            &[first.id().unwrap().get(), second.id().unwrap().get()],
+            Some(morph_type.id().unwrap().get()),
+        )
+        .unwrap_err();
+
+        assert!(matches!(
+            err,
+            EntryServiceError::Database(DatabaseError::FailedToUpdateData(_))
+        ));
+        let entries = list_entries(&mut conn).unwrap();
+        assert!(entries.iter().all(|entry| entry.morph_type_id().is_none()));
+    }
+
+    #[test]
+    fn delete_entries_removes_all_selected_entries() {
+        let mut conn = setup();
+        let first = create_entry(&mut conn, "first", None).unwrap();
+        let second = create_entry(&mut conn, "second", None).unwrap();
+        let ids = [
+            first.id().unwrap().get(),
+            second.id().unwrap().get(),
+            first.id().unwrap().get(),
+        ];
+
+        let deleted = delete_entries(&mut conn, &ids).unwrap();
+
+        assert_eq!(deleted.len(), 2);
+        assert!(list_entries(&mut conn).unwrap().is_empty());
+    }
+
+    #[test]
+    fn delete_entries_rolls_back_when_an_entry_is_missing() {
+        let mut conn = setup();
+        let first = create_entry(&mut conn, "first", None).unwrap();
+        let ids = [first.id().unwrap().get(), 999_999];
+
+        let err = delete_entries(&mut conn, &ids).unwrap_err();
+
+        assert!(matches!(
+            err,
+            EntryServiceError::Database(DatabaseError::NotFound)
+        ));
+        let entries = list_entries(&mut conn).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].form().as_str(), "first");
     }
 
     #[test]

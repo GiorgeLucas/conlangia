@@ -12,6 +12,89 @@
   }
 }
 
+@keyframes entryDetailEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes entryDetailCardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes entryDetailFormEnter {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes entryDetailConfirmEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes entryDetailCardExit {
+  to {
+    opacity: 0;
+    transform: translateX(4px) scale(0.99);
+  }
+}
+
+.entry-detail-content {
+  animation: entryDetailEnter 220ms ease-out both;
+}
+
+.entry-detail-card {
+  animation: entryDetailCardEnter 200ms ease-out both;
+}
+
+.entry-detail-card-exit {
+  animation: entryDetailCardExit 150ms ease-in both;
+  pointer-events: none;
+}
+
+.entry-detail-form {
+  animation: entryDetailFormEnter 180ms ease-out both;
+  transform-origin: top center;
+}
+
+.entry-detail-confirm {
+  animation: entryDetailConfirmEnter 160ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-detail-content,
+  .entry-detail-card,
+  .entry-detail-card-exit,
+  .entry-detail-form,
+  .entry-detail-confirm {
+    animation: none !important;
+  }
+}
+
 .app-root :is(input, textarea, [contenteditable="true"], [contenteditable=""]) {
   user-select: text;
 }

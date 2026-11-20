@@ -1,7 +1,7 @@
-import { Dispatch, FormEvent, SetStateAction } from "react";
+import { Dispatch, FormEvent, SetStateAction, useState } from "react";
 import { CategoryDto } from "@/api/categories";
 import { SenseDto } from "@/api/entries";
-import { GripVertical, Plus, Trash2 } from "lucide-react";
+import { GripVertical, Loader2, Plus, Trash2 } from "lucide-react";
 import Button from "@/ui/Button";
 import CustomSelect, { SelectOption } from "@/ui/Select";
 import Badge from "@/ui/Badge";
@@ -33,7 +33,7 @@ interface SensesSectionProps {
     senseId: number,
     categoryId: string | null
   ) => void;
-  onRemoveSense: (senseId: number) => void;
+  onRemoveSense: (senseId: number) => Promise<boolean>;
 }
 
 export default function SensesSection({
@@ -61,6 +61,18 @@ export default function SensesSection({
   onChangeSenseCategory,
   onRemoveSense,
 }: SensesSectionProps) {
+  const [removingId, setRemovingId] = useState<number | null>(null);
+
+  const handleRemoveSense = async (senseId: number) => {
+    setRemovingId(senseId);
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      await new Promise((resolve) => window.setTimeout(resolve, 150));
+    }
+    if (!(await onRemoveSense(senseId))) {
+      setRemovingId(null);
+    }
+  };
+
   return (
     <section className="mt-8 space-y-3">
       <div className="flex items-center justify-between">
@@ -70,7 +82,7 @@ export default function SensesSection({
         <button
           type="button"
           onClick={() => setShowAddSense((prev) => !prev)}
-          className="flex items-center gap-1 text-sm font-semibold text-violet-600 hover:text-violet-700 transition hover:cursor-pointer dark:text-violet-400"
+          className="flex items-center gap-1 text-sm font-semibold text-violet-600 transition-transform transition-colors hover:text-violet-700 active:scale-95 hover:cursor-pointer dark:text-violet-400"
         >
           <Plus size={15} />
           <span>Add</span>
@@ -99,8 +111,10 @@ export default function SensesSection({
                 id={`sense-${sense.id}`}
                 group={`senses-${entryId}`}
                 index={index}
-                disabled={isReordering}
-                className="group relative rounded-xl border border-zinc-200/90 bg-white p-4 shadow-2xs transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-zinc-700"
+                disabled={isReordering || removingId === sense.id}
+                className={`entry-detail-card group relative rounded-xl border border-zinc-200/90 bg-white p-4 shadow-2xs transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/60 dark:hover:border-zinc-700 ${
+                  removingId === sense.id ? "entry-detail-card-exit" : ""
+                }`}
               >
                 {(handleRef) => (
                   <>
@@ -121,7 +135,7 @@ export default function SensesSection({
                           />
                         </button>
                         {isEditingTranslation ? (
-                          <div className="flex-1 max-w-sm">
+                          <div className="flex h-6 max-w-sm flex-1 items-center">
                             <input
                               key={`${sense.id}-${sense.translation}`}
                               type="text"
@@ -148,7 +162,7 @@ export default function SensesSection({
                                 }
                               }}
                               autoFocus
-                              className="h-7 w-full bg-transparent p-0 font-bold text-base text-zinc-950 outline-none focus:text-violet-700 dark:text-zinc-50 dark:focus:text-violet-300 select-text"
+                              className="h-6 w-full bg-transparent p-0 font-bold text-base leading-6 text-zinc-950 outline-none focus:text-violet-700 dark:text-zinc-50 dark:focus:text-violet-300 select-text"
                             />
                           </div>
                         ) : (
@@ -157,7 +171,7 @@ export default function SensesSection({
                               setEditingField(`sense-trans-${sense.id}`);
                             }}
                             title="Click to edit translation"
-                            className="font-bold text-base text-zinc-950 hover:cursor-pointer hover:text-violet-700 transition dark:text-zinc-100 dark:hover:text-violet-300"
+                            className="font-bold text-base leading-6 text-zinc-950 hover:cursor-pointer hover:text-violet-700 transition dark:text-zinc-100 dark:hover:text-violet-300"
                           >
                             {sense.translation}
                           </span>
@@ -166,7 +180,7 @@ export default function SensesSection({
 
                       <button
                         type="button"
-                        onClick={() => onRemoveSense(sense.id)}
+                        onClick={() => handleRemoveSense(sense.id)}
                         title="Remove sense"
                         className="rounded p-1 text-zinc-300 opacity-0 transition group-hover:opacity-100 hover:text-red-500 hover:cursor-pointer dark:text-zinc-600"
                       >
@@ -178,7 +192,7 @@ export default function SensesSection({
 
                     <div className="ml-6 space-y-3">
                         {isEditingDefinition ? (
-                          <div>
+                          <div className="flex h-5 items-center">
                             <input
                               key={`${sense.id}-${sense.definition ?? ""}`}
                               type="text"
@@ -204,7 +218,7 @@ export default function SensesSection({
                                 }
                               }}
                               autoFocus
-                              className="h-7 w-full bg-transparent p-0 text-sm text-zinc-700 outline-none focus:text-violet-700 dark:text-zinc-300 dark:focus:text-violet-300 select-text"
+                              className="block h-5 w-full bg-transparent p-0 text-sm leading-5 text-zinc-700 outline-none focus:text-violet-700 dark:text-zinc-300 dark:focus:text-violet-300 select-text"
                             />
                           </div>
                         ) : (
@@ -213,7 +227,7 @@ export default function SensesSection({
                               setEditingField(`sense-def-${sense.id}`);
                             }}
                             title="Click to edit definition"
-                            className="text-sm text-zinc-600 hover:cursor-pointer hover:text-zinc-950 transition dark:text-zinc-400 dark:hover:text-zinc-200"
+                            className="h-5 text-sm leading-5 text-zinc-600 hover:cursor-pointer hover:text-zinc-950 transition dark:text-zinc-400 dark:hover:text-zinc-200"
                           >
                             {sense.definition || (
                               <span className="italic text-zinc-300 dark:text-zinc-600">
@@ -223,7 +237,7 @@ export default function SensesSection({
                           </p>
                         )}
 
-                        <div>
+                        <div className="flex h-6 items-center">
                           {isChangingCategory ? (
                             <div className="w-48">
                               <CustomSelect
@@ -238,7 +252,7 @@ export default function SensesSection({
                                 options={categoryOptions}
                                 placeholder="Select category..."
                                 defaultOpen
-                                triggerClassName="!h-7 !text-xs !rounded-full"
+                                triggerClassName="!h-6 !text-xs !rounded-full"
                               />
                             </div>
                           ) : (
@@ -264,7 +278,7 @@ export default function SensesSection({
       {showAddSense && (
         <form
           onSubmit={onAddSense}
-          className="rounded-xl border border-dashed border-violet-300 bg-violet-50/20 p-4 space-y-3 dark:border-violet-900/50 dark:bg-violet-950/10"
+          className="entry-detail-form rounded-xl border border-dashed border-violet-300 bg-violet-50/20 p-4 space-y-3 dark:border-violet-900/50 dark:bg-violet-950/10"
         >
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div className="sm:col-span-2">
@@ -304,7 +318,7 @@ export default function SensesSection({
               type="button"
               variant="ghost"
               onClick={() => setShowAddSense(false)}
-              className="!h-7 !px-2.5 !text-xs"
+              className="!h-7 !px-2.5 !text-xs transition-transform active:scale-95"
             >
               Cancel
             </Button>
@@ -312,10 +326,14 @@ export default function SensesSection({
               type="submit"
               variant="primary"
               disabled={addingSense || !newSenseTrans.trim()}
-              className="!h-7 !px-3 !text-xs !gap-1"
+              className="!h-7 !px-3 !text-xs !gap-1 transition-transform active:scale-95"
             >
-              <Plus size={13} />
-              Save Sense
+              {addingSense ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <Plus size={13} />
+              )}
+              {addingSense ? "Saving..." : "Save Sense"}
             </Button>
           </div>
         </form>

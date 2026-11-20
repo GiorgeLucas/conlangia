@@ -100,16 +100,16 @@ export default function EntryDetailHeader({
 
         <div>
           {confirmDelete ? (
-            <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 pt-1">
+            <div className="entry-detail-confirm flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 pt-1">
               <AlertCircle size={13} />
               <span className="font-medium">Delete entry?</span>
               <button
                 type="button"
                 onClick={onDelete}
                 disabled={isDeleting}
-                className="font-bold underline hover:text-red-700 px-0.5 hover:cursor-pointer"
+                className="font-bold underline transition-transform active:scale-95 hover:text-red-700 px-0.5 hover:cursor-pointer"
               >
-                Yes
+                {isDeleting ? "Deleting..." : "Yes"}
               </button>
               <span className="text-zinc-300 dark:text-zinc-700">·</span>
               <button
@@ -125,7 +125,7 @@ export default function EntryDetailHeader({
               type="button"
               onClick={() => setConfirmDelete(true)}
               title="Delete lexical entry"
-              className="flex items-center justify-center rounded-lg p-1.5 text-red-500 transition hover:bg-red-50/80 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-950/30 hover:cursor-pointer"
+              className="flex items-center justify-center rounded-lg p-1.5 text-red-500 transition hover:bg-red-50/80 hover:text-red-600 active:scale-95 dark:text-red-400 dark:hover:bg-red-950/30 hover:cursor-pointer"
             >
               <Trash2 size={18} />
             </button>
