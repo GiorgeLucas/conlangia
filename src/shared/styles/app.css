@@ -1,0 +1,146 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes entryDetailEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes entryDetailCardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes entryDetailFormEnter {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes entryDetailConfirmEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes entryDetailCardExit {
+  to {
+    opacity: 0;
+    transform: translateX(4px) scale(0.99);
+  }
+}
+
+.entry-detail-content {
+  animation: entryDetailEnter 220ms ease-out both;
+}
+
+.entry-detail-card {
+  animation: entryDetailCardEnter 200ms ease-out both;
+}
+
+.entry-detail-card-exit {
+  animation: entryDetailCardExit 150ms ease-in both;
+  pointer-events: none;
+}
+
+.entry-detail-form {
+  animation: entryDetailFormEnter 180ms ease-out both;
+  transform-origin: top center;
+}
+
+.entry-detail-confirm {
+  animation: entryDetailConfirmEnter 160ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-detail-content,
+  .entry-detail-card,
+  .entry-detail-card-exit,
+  .entry-detail-form,
+  .entry-detail-confirm {
+    animation: none !important;
+  }
+}
+
+.app-root :is(input, textarea, [contenteditable="true"], [contenteditable=""]) {
+  user-select: text;
+}
+
+.workspace-table-scrollbar {
+  scrollbar-color: #9466ff transparent;
+  scrollbar-width: thin;
+}
+
+.workspace-table-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.workspace-table-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.workspace-table-scrollbar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background: #9466ff;
+  background-clip: padding-box;
+}
+
+.workspace-table-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6f31ff;
+  background-clip: padding-box;
+}
+
+:root.dark .workspace-table-scrollbar {
+  scrollbar-color: #9466ff transparent;
+}
+
+:root.dark .workspace-table-scrollbar::-webkit-scrollbar-thumb {
+  background: #9466ff;
+  background-clip: padding-box;
+}
+
+:root.dark .workspace-table-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6f31ff;
+  background-clip: padding-box;
+}
+
+html.theme-change-instant,
+html.theme-change-instant * {
+  transition: none !important;
+  animation: none !important;
+}
