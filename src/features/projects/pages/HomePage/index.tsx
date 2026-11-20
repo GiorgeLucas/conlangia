@@ -51,14 +51,15 @@ export default function HomePage() {
                   Open project
                 </Button>
               </div>
+              <div className="mt-8 text-xs text-zinc-400">
+                <p>Your language files stay in the folder you choose.</p>
+                <p className="mt-3">v0.1.0</p>
+              </div>
             </div>
             <footer className="flex w-fit max-w-full flex-col items-start gap-3 text-xs text-zinc-400">
-              <p className="w-fit max-w-full">
-                Your language files stay in the folder you choose.
-              </p>
               <nav
                 aria-label="Project links"
-                className="flex w-full items-center justify-between gap-2"
+                className="flex w-full items-center justify-start gap-4"
               >
                 <a
                   href="https://github.com/GiorgeLucas/conlangia"
