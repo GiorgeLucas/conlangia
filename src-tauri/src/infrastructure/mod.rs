@@ -15,10 +15,4 @@ pub enum InfrastructureError {
 
     #[error("filesystem error: {0}")]
     Io(#[from] std::io::Error),
-
-    #[error("directory does not exist")]
-    DirectoryDoesntExist,
-
-    #[error("file does not exist")]
-    FileDoesntExist,
 }

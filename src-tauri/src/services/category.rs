@@ -97,10 +97,7 @@ pub fn delete_category(
 mod tests {
     use rusqlite::Connection;
 
-    use crate::{
-        infrastructure::database::projects::run_migrations,
-        models::category::{CategoryDescription, CategoryName},
-    };
+    use crate::infrastructure::database::projects::run_migrations;
 
     use super::*;
 
