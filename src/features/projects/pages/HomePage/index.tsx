@@ -25,29 +25,65 @@ export default function HomePage() {
       </button>
       <div className="mx-auto flex h-full max-w-5xl flex-col px-10 py-10">
         <section className="flex min-h-0 flex-1 items-center gap-16">
-          <div className="w-[42%] shrink-0">
-            <img src={"assets/logo.svg"} alt="Conlangia Logo" className="size-24 mb-8" />
-            <p className="mb-4 text-xs font-semibold uppercase tracking-[.18em] text-violet-600">
-              Shape a language
-            </p>
-            <h2 className="text-4xl font-semibold leading-tight tracking-[-.035em]">
-              Give every word
-              <br />a place to belong.
-            </h2>
-            <p className="mt-5 max-w-md text-base leading-7 text-zinc-500 dark:text-zinc-400">
-              Build your lexicon, organize meanings, and refine the sounds of
-              your constructed language.
-            </p>
-            <div className="mt-8 flex gap-3">
-              <Button onClick={() => setModal("new")} variant="primary">
-                <Plus size={16} />
-                New project
-              </Button>
-              <Button onClick={() => setModal("open")} variant="secondary">
-                <FolderOpen size={16} />
-                Open project
-              </Button>
+          <div className="flex w-[42%] shrink-0 flex-col self-stretch">
+            <div className="my-auto">
+              <img
+                src="assets/logo.svg"
+                alt=""
+                aria-hidden="true"
+                className="mb-8 size-24"
+              />
+              <h1 className="mb-4 font-display text-5xl font-semibold leading-none tracking-[-.045em] text-zinc-950 dark:text-zinc-50">
+                Conlangia
+              </h1>
+              <p className="mt-5 max-w-md text-base leading-7 text-zinc-500 dark:text-zinc-400">
+                Shape your language from its first word to a living lexicon.
+                Bring forms, pronunciations, meanings, and morphology together
+                as your ideas grow.
+              </p>
+              <div className="mt-8 flex gap-3">
+                <Button onClick={() => setModal("new")} variant="primary">
+                  <Plus size={16} />
+                  New project
+                </Button>
+                <Button onClick={() => setModal("open")} variant="secondary">
+                  <FolderOpen size={16} />
+                  Open project
+                </Button>
+              </div>
             </div>
+            <footer className="flex w-fit max-w-full flex-col items-start gap-3 text-xs text-zinc-400">
+              <p className="w-fit max-w-full">
+                Your language files stay in the folder you choose.
+              </p>
+              <nav
+                aria-label="Project links"
+                className="flex w-full items-center justify-between gap-2"
+              >
+                <a
+                  href="https://github.com/GiorgeLucas/conlangia"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-sm transition-colors hover:text-violet-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:hover:text-violet-400"
+                >
+                  GitHub
+                </a>
+                <a
+                  href="#"
+                  className="rounded-sm transition-colors hover:text-violet-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:hover:text-violet-400"
+                >
+                  Documentation
+                </a>
+                <a
+                  href="https://github.com/GiorgeLucas/conlangia/issues"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-sm transition-colors hover:text-violet-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:hover:text-violet-400"
+                >
+                  Report an issue
+                </a>
+              </nav>
+            </footer>
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col self-stretch py-20">
@@ -86,9 +122,6 @@ export default function HomePage() {
             </div>
           </div>
         </section>
-        <footer className="text-xs text-zinc-400">
-          Your language files stay in the folder you choose.
-        </footer>
       </div>
       <CreateProjectDialog
         open={modal === "new"}
