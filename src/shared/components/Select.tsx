@@ -40,7 +40,7 @@ export default function CustomSelect({
       disabled={disabled}
     >
       <Select.Trigger
-        className={`flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-neutral-100 bg-white px-3 py-1.5 text-xs text-neutral-900 shadow-xs transition-colors hover:border-neutral-200 focus:border-accent-700 focus:ring-1 focus:ring-accent-700 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-700 ${triggerClassName} ${className}`}
+        className={`flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs text-zinc-900 shadow-xs transition-colors hover:border-zinc-400 focus:border-violet-600 focus:ring-1 focus:ring-violet-600 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-700 ${triggerClassName} ${className}`}
       >
         <Select.Value
           placeholder={

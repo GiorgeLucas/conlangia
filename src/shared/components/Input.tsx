@@ -10,16 +10,16 @@ export default function Input({ className = "", ...props }: InputProps) {
         h-10 px-3 py-2 gap-2
         flex items-center
         rounded-lg
-        border border-neutral-100
+        border border-zinc-300
         bg-white
-        font-[Inter] text-[14px] not-italic font-medium
+        font-sans text-[14px] not-italic font-medium
         leading-[15.5px] tracking-[0.4px]
-        text-neutral-900
-        placeholder:text-neutral-400
+        text-zinc-900
+        placeholder:text-zinc-500
         outline-none
-        focus:border-accent-700
+        focus:border-violet-600
         focus:ring-1
-        focus:ring-accent-700
+        focus:ring-violet-600
         dark:border-zinc-800
         dark:bg-zinc-900
         dark:text-zinc-100

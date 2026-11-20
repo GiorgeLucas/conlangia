@@ -1,7 +1,30 @@
 @import "tailwindcss";
-@import "./theme.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+  --color-zinc-50: #f5f2f8;
+  --color-zinc-100: #ebe7f0;
+  --color-zinc-200: #d8d3e0;
+  --color-zinc-300: #bdb7c7;
+  --color-zinc-400: #9a94a5;
+  --color-zinc-500: #746e81;
+  --color-zinc-600: #565063;
+  --color-zinc-700: #3d3749;
+  --color-zinc-800: #2a2535;
+  --color-zinc-900: #191522;
+  --color-zinc-950: #100d18;
+}
+
+::selection {
+  background-color: var(--color-violet-700);
+  color: white;
+}
 
 @keyframes fadeIn {
   from {

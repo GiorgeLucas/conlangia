@@ -152,7 +152,9 @@ export default function MorphologyTable({
             morphTypes.map((morphType) => (
               <tr
                 key={morphType.id}
-                onClick={() => onToggleSelected(morphType.id)}
+                onClick={() => {
+                  if (selectedIds.size > 0) onToggleSelected(morphType.id);
+                }}
                 className={`group ${
                   selectedIds.has(morphType.id)
                     ? "bg-violet-50/50 dark:bg-violet-950/15"
@@ -163,7 +165,10 @@ export default function MorphologyTable({
                   className="px-3 py-4"
                   onClick={(event) => {
                     event.stopPropagation();
-                    if (event.target === event.currentTarget) {
+                    if (
+                      selectedIds.size > 0 &&
+                      event.target === event.currentTarget
+                    ) {
                       onToggleSelected(morphType.id);
                     }
                   }}
